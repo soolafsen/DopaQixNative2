@@ -833,6 +833,7 @@ func _distance_to_segment(point: Vector2, a: Vector2, b: Vector2) -> float:
 func _update_sparks(delta: float) -> float:
 	var max_danger := 0.0
 	var distances := _build_spark_distance_map(_spark_targets())
+	var sim_delta: float = min(delta, 0.05)
 	for spark in sparks:
 		var spark_effect := str(spark.get("effect_kind", ""))
 		var speed := SPARK_SPEED * _player_speed_scale() * _enemy_speed_scale()
@@ -840,7 +841,7 @@ func _update_sparks(delta: float) -> float:
 			speed *= 1.75
 		elif spark_effect == "bomb":
 			speed *= 0.5
-		spark["progress"] += delta * speed
+		spark["progress"] += sim_delta * speed
 		while spark["progress"] >= 1.0:
 			spark["progress"] -= 1.0
 			var next = _choose_spark_step(spark, distances)
@@ -854,9 +855,15 @@ func _update_sparks(delta: float) -> float:
 				spark["history"].pop_back()
 
 			if player["drawing"] and grid[spark["row"]][spark["col"]] == TILE_TRAIL:
+				var hit_pos := _cell_center(spark["col"], spark["row"])
+				_spawn_particles(hit_pos, Color("ffd7a3"), 18, 180.0, 0.4, 3.0)
+				_float_text(hit_pos, "SPARK", Color("fff0c4"))
 				_lose_life("A spark burned your line.")
 				return 1.0
 			if spark["col"] == player["col"] and spark["row"] == player["row"]:
+				var tag_pos := _cell_center(spark["col"], spark["row"])
+				_spawn_particles(tag_pos, Color("ffd7a3"), 18, 180.0, 0.4, 3.0)
+				_float_text(tag_pos, "SPARK", Color("fff0c4"))
 				_lose_life("A spark tagged you.")
 				return 1.0
 
@@ -1759,9 +1766,10 @@ func _options_visible() -> bool:
 
 func _options_panel_rect() -> Rect2:
 	var board := _board_rect()
-	var top: float = 20.0 if state_name == "title" else 24.0
+	var top: float = 20.0 if state_name == "title" else board.position.y - 18.0
 	var x: float = board.end.x + SIDEBAR_GAP
-	return Rect2(Vector2(x, top), Vector2(SIDEBAR_WIDTH, size.y - top - 24.0))
+	var height: float = size.y - top - 24.0 if state_name == "title" else board.size.y + 44.0
+	return Rect2(Vector2(x, top), Vector2(SIDEBAR_WIDTH, height))
 
 
 func _options_settings_rect() -> Rect2:
@@ -2071,6 +2079,15 @@ func _draw_cabinet_shell() -> void:
 	draw_rect(Rect2(Vector2(board.end.x - 8.0, shell.position.y + 10.0), Vector2(panel.position.x - board.end.x + 16.0, shell.size.y - 20.0)), _with_alpha(Color("0c141d"), 0.98), true)
 	draw_rect(shell, _with_alpha(Color("233342"), 0.52), false, 3.0)
 	draw_rect(shell.grow(-10.0), _with_alpha(Color("0f1822"), 0.42), false, 1.0)
+	if state_name != "title":
+		var frame_top: float = board.position.y - 24.0
+		var frame_bottom: float = board.end.y + 24.0
+		var bridge_x: float = board.end.x - 2.0
+		var bridge_w: float = panel.position.x - bridge_x + 2.0
+		draw_rect(Rect2(Vector2(bridge_x, frame_top), Vector2(bridge_w, 5.0)), _with_alpha(Color("ffe476"), 0.42), true)
+		draw_rect(Rect2(Vector2(bridge_x, frame_bottom - 5.0), Vector2(bridge_w, 5.0)), _with_alpha(Color("ffe476"), 0.42), true)
+		draw_rect(Rect2(Vector2(bridge_x + 8.0, frame_top + 9.0), Vector2(maxf(0.0, bridge_w - 16.0), 3.0)), _with_alpha(Color("ff7cb8"), 0.3), true)
+		draw_rect(Rect2(Vector2(bridge_x + 8.0, frame_bottom - 12.0), Vector2(maxf(0.0, bridge_w - 16.0), 3.0)), _with_alpha(Color("ff7cb8"), 0.3), true)
 
 
 func _draw_player() -> void:
