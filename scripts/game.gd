@@ -2089,9 +2089,6 @@ func _draw_board() -> void:
 						pulse.a = 0.94
 						draw_rect(rect.grow(-2.0), pulse, true)
 						draw_rect(rect.grow(-0.75), Color.WHITE, false, 1.0)
-	else:
-		draw_rect(_shift_rect(board, camera_offset * 0.18), _with_alpha(Color.WHITE, 0.02), true)
-		draw_rect(_shift_rect(board.grow(-10.0), camera_offset * 0.08), _with_alpha(Color.BLACK, 0.03), false, 2.0)
 
 	draw_rect(_shift_rect(board, camera_offset * 0.18), _with_alpha(_theme_color("rail"), 0.5), false, 2.0)
 	draw_rect(_shift_rect(board.grow(-6.0), camera_offset * 0.08), _with_alpha(Color("ffffff"), 0.08), false, 1.0)
