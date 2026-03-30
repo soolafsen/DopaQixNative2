@@ -1387,9 +1387,12 @@ func _player_position() -> Vector2:
 
 
 func _board_rect() -> Rect2:
-	var cabinet_width: float = BOARD_RECT.size.x + SIDEBAR_GAP + SIDEBAR_WIDTH
+	var sidebar_width: float = SIDEBAR_WIDTH
+	if state_name == "title":
+		sidebar_width = clampf(size.x - BOARD_RECT.size.x - 54.0, SIDEBAR_WIDTH, 430.0)
+	var cabinet_width: float = BOARD_RECT.size.x + SIDEBAR_GAP + sidebar_width
 	var left: float = maxf(24.0, floor((size.x - cabinet_width) * 0.5))
-	var top: float = 34.0 if state_name == "title" else clampf(floor(size.y * 0.12), 92.0, 122.0)
+	var top: float = 24.0 if state_name == "title" else clampf(floor(size.y * 0.12), 92.0, 122.0)
 	return Rect2(Vector2(left, top), BOARD_RECT.size)
 
 
@@ -1761,9 +1764,9 @@ func _options_visible() -> bool:
 func _options_panel_rect() -> Rect2:
 	var board := _board_rect()
 	var top: float = maxf(18.0, board.position.y - (18.0 if state_name == "title" else 104.0))
-	var bottom: float = minf(size.y - 12.0, board.end.y + 12.0)
+	var bottom: float = minf(size.y - 12.0, board.end.y + (92.0 if state_name == "title" else 12.0))
 	var x: float = board.end.x + SIDEBAR_GAP
-	var width: float = SIDEBAR_WIDTH
+	var width: float = clampf(size.x - x - 18.0, SIDEBAR_WIDTH, 430.0) if state_name == "title" else SIDEBAR_WIDTH
 	return Rect2(Vector2(x, top), Vector2(width, bottom - top))
 
 
@@ -1779,7 +1782,7 @@ func _options_controls_rect() -> Rect2:
 
 func _options_footer_rect() -> Rect2:
 	var panel := _options_panel_rect()
-	return Rect2(Vector2(panel.position.x + 18.0, panel.end.y - 52.0), Vector2(panel.size.x - 36.0, 34.0))
+	return Rect2(Vector2(panel.position.x + 18.0, panel.end.y - 72.0), Vector2(panel.size.x - 36.0, 52.0))
 
 
 func _options_pickups_rect() -> Rect2:
@@ -1787,7 +1790,7 @@ func _options_pickups_rect() -> Rect2:
 	var footer := _options_footer_rect()
 	return Rect2(
 		Vector2(controls.position.x, controls.end.y + 12.0),
-		Vector2(controls.size.x, maxf(98.0, footer.position.y - controls.end.y - 24.0))
+		Vector2(controls.size.x, maxf(68.0, footer.position.y - controls.end.y - 36.0))
 	)
 
 
@@ -2066,10 +2069,14 @@ func _draw_board() -> void:
 func _draw_cabinet_shell() -> void:
 	var board := _board_rect()
 	var panel := _options_panel_rect()
-	var shell := Rect2(
-		Vector2(board.position.x - 24.0, minf(board.position.y - 18.0, panel.position.y - 14.0)),
-		Vector2(panel.end.x - board.position.x + 48.0, maxf(board.end.y + 18.0, panel.end.y + 12.0) - minf(board.position.y - 18.0, panel.position.y - 14.0))
-	)
+	var shell := Rect2()
+	if state_name == "title":
+		shell = Rect2(Vector2(12.0, 12.0), Vector2(size.x - 24.0, maxf(board.end.y + 24.0, panel.end.y + 12.0) - 12.0))
+	else:
+		shell = Rect2(
+			Vector2(board.position.x - 24.0, minf(board.position.y - 18.0, panel.position.y - 14.0)),
+			Vector2(panel.end.x - board.position.x + 48.0, maxf(board.end.y + 18.0, panel.end.y + 12.0) - minf(board.position.y - 18.0, panel.position.y - 14.0))
+		)
 	draw_rect(shell, _with_alpha(Color("09111a"), 0.9), true)
 	draw_rect(Rect2(Vector2(board.end.x - 10.0, shell.position.y + 12.0), Vector2(panel.position.x - board.end.x + 20.0, shell.size.y - 24.0)), _with_alpha(Color("0c141d"), 0.98), true)
 	draw_rect(shell, _with_alpha(Color("233342"), 0.52), false, 3.0)
@@ -2348,12 +2355,14 @@ func _draw_options_panel() -> void:
 	var settings := _options_settings_rect()
 	var controls := _options_controls_rect()
 	var pickups_rect := _options_pickups_rect()
+	var footer_rect := _options_footer_rect()
 	_draw_panel(panel, Color("0a1017", 0.97), _with_alpha(Color("31414f"), 0.52))
 	_draw_candy_title(panel.position + Vector2(18.0, 46.0))
 	_draw_label(panel.position + Vector2(18.0, 92.0), "BETA CONTROLS", 13, Color("a0adc3"))
 	_draw_panel(settings, Color("08111a", 0.98), _with_alpha(Color("2f4a5d"), 0.42))
 	_draw_panel(controls, Color("08111a", 0.98), _with_alpha(Color("544031"), 0.34))
 	_draw_panel(pickups_rect, Color("08111a", 0.98), _with_alpha(Color("36505f"), 0.34))
+	_draw_panel(footer_rect, Color("08111a", 0.98), _with_alpha(Color("4b5a69"), 0.34))
 	_draw_label(settings.position + Vector2(16.0, 26.0), "SETTINGS", 13, Color("8ea3b4"))
 	var labels := ["Speed", "Magic", "Reveal Pool", "Cheat Mode", "Music", "Volume"]
 	for index in range(labels.size()):
@@ -2394,7 +2403,7 @@ func _draw_options_panel() -> void:
 		_draw_centered_label(Vector2(badge.get_center().x, badge.position.y + 17.0), legend["text"], 13, Color("fff6ea"))
 		_draw_label(Vector2(pickups_rect.position.x + 128.0, legend_y), legend["desc"], 14, Color("eef8ff"))
 		legend_y += 22.0
-	_draw_action_pill(_options_exit_rect(), "Exit Game")
+	_draw_action_pill(footer_rect.grow_individual(-10.0, -8.0, -10.0, -8.0), "Exit Game")
 
 
 func _draw_label(position: Vector2, text: String, font_size: int, color: Color) -> void:
