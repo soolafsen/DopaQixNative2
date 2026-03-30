@@ -6,7 +6,7 @@ Native Godot 4 Windows port of the DopaQiX web game on `main`, rebuilt to stay c
   <img src="docs/dopaplay2.png" alt="DopaQixNative2 gameplay illustration" width="960">
 </p>
 
-> TODO: Better reveal images coming.
+> TODO: Better reveal images coming, game still not quite cooked, but very playable.
 
 ## Play Now
 
