@@ -121,6 +121,7 @@ var camera_offset := Vector2.ZERO
 var rail_pickup_timer := 5.0
 var field_pickup_timer := 6.0
 var slice_sound_cooldown := 0.0
+var shield_block_cooldown := 0.0
 
 var music_enabled := true
 var music_volume := 0.7
@@ -159,6 +160,7 @@ func _process(delta: float) -> void:
 	state_timer += delta
 	banner_timer = max(0.0, banner_timer - delta)
 	slice_sound_cooldown = max(0.0, slice_sound_cooldown - delta)
+	shield_block_cooldown = max(0.0, shield_block_cooldown - delta)
 	if state_name != "level_clear":
 		flash_strength = move_toward(flash_strength, 0.0, delta * 1.9)
 		shake_strength = move_toward(shake_strength, 0.0, delta * 18.0)
@@ -1202,12 +1204,13 @@ func _lose_life(reason: String) -> void:
 	if state_name != "playing":
 		return
 	if _effect_active("shield"):
-		active_effects["shield"] = 0.0
-		_float_text(_player_position(), "SHIELD POP", Color("8fefff"))
-		_spawn_particles(_player_position(), Color("8fefff"), 24, 220.0, 0.5, 3.6)
-		_flash(Color("8fefff"), 0.16)
-		_shake(6.0)
-		_play_sfx("shield")
+		if shield_block_cooldown <= 0.0:
+			_float_text(_player_position(), "SHIELDED", Color("8fefff"))
+			_spawn_particles(_player_position(), Color("8fefff"), 24, 220.0, 0.5, 3.6)
+			_flash(Color("8fefff"), 0.16)
+			_shake(6.0)
+			_play_sfx("shield")
+			shield_block_cooldown = 0.2
 		return
 
 	_clear_trail()
@@ -1742,19 +1745,21 @@ func _options_visible() -> bool:
 
 
 func _options_panel_rect() -> Rect2:
+	var top: float = 22.0
+	var bottom: float = minf(size.y - 18.0, BOARD_RECT.end.y + 36.0)
 	var x: float = BOARD_RECT.end.x + SIDEBAR_GAP
 	var width: float = maxf(272.0, size.x - x - 20.0)
-	return Rect2(Vector2(x, 18.0), Vector2(width, size.y - 36.0))
+	return Rect2(Vector2(x, top), Vector2(width, bottom - top))
 
 
 func _options_control_rect(index: int) -> Rect2:
 	var panel := _options_panel_rect()
-	return Rect2(panel.position + Vector2(panel.size.x - 150.0, 142.0 + index * 58.0), Vector2(130.0, 34.0))
+	return Rect2(panel.position + Vector2(panel.size.x - 150.0, 132.0 + index * 54.0), Vector2(130.0, 34.0))
 
 
 func _options_exit_rect() -> Rect2:
 	var panel := _options_panel_rect()
-	return Rect2(Vector2(panel.position.x + 18.0, panel.end.y - 56.0), Vector2(panel.size.x - 36.0, 36.0))
+	return Rect2(Vector2(panel.position.x + 18.0, panel.end.y - 44.0), Vector2(panel.size.x - 36.0, 30.0))
 
 
 func _control_step_rect(base: Rect2, side: String) -> Rect2:
@@ -2285,11 +2290,11 @@ func _draw_overlay() -> void:
 func _draw_options_panel() -> void:
 	var panel := _options_panel_rect()
 	_draw_panel(panel, Color("0a1018", 0.94), _with_alpha(Color("243246"), 0.58))
-	_draw_candy_title(panel.position + Vector2(18.0, 42.0))
-	_draw_label(panel.position + Vector2(18.0, 96.0), "BETA CONTROLS", 13, Color("7f8baa"))
+	_draw_candy_title(panel.position + Vector2(18.0, 38.0))
+	_draw_label(panel.position + Vector2(18.0, 84.0), "BETA CONTROLS", 13, Color("7f8baa"))
 	var labels := ["Speed", "Magic", "Reveal Pool", "Cheat Mode", "Music", "Volume"]
 	for index in range(labels.size()):
-		var y := panel.position.y + 164.0 + index * 58.0
+		var y := panel.position.y + 152.0 + index * 54.0
 		_draw_label(Vector2(panel.position.x + 18.0, y), labels[index], 16, Color("eef8ff"))
 	var speed_rect := _options_control_rect(0)
 	var magic_rect := _options_control_rect(1)
@@ -2304,14 +2309,14 @@ func _draw_options_panel() -> void:
 	_draw_toggle_pill(music_rect, "On" if music_enabled else "Off", music_enabled)
 	_draw_stepper(volume_rect, "%d%%" % int(round(music_volume * 100.0)))
 	_draw_label(panel.position + Vector2(18.0, panel.position.y + 18.0), "", 1, Color.WHITE)
-	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 524.0), "CONTROLS", 13, Color("7f8baa"))
-	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 560.0), "WASD or arrows: Move", 16, Color("eef8ff"))
-	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 586.0), "Space: Start cut / continue", 16, Color("eef8ff"))
-	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 612.0), "Shift: Fast risky carve", 16, Color("eef8ff"))
-	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 638.0), "P / Esc: Pause", 16, Color("eef8ff"))
-	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 664.0), "Q: Quit", 16, Color("eef8ff"))
-	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 708.0), "PICKUPS", 13, Color("7f8baa"))
-	var legend_y := panel.position.y + 742.0
+	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 474.0), "CONTROLS", 13, Color("7f8baa"))
+	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 506.0), "WASD or arrows: Move", 15, Color("eef8ff"))
+	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 530.0), "Space: Start cut / continue", 15, Color("eef8ff"))
+	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 554.0), "Shift: Fast risky carve", 15, Color("eef8ff"))
+	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 578.0), "P / Esc: Pause", 15, Color("eef8ff"))
+	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 602.0), "Q: Quit", 15, Color("eef8ff"))
+	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 636.0), "PICKUPS", 13, Color("7f8baa"))
+	var legend_y := panel.position.y + 666.0
 	for legend in [
 		{"text": "Bomb", "desc": "Slow 10s", "fill": Color("5b2f2b")},
 		{"text": "Heart", "desc": "+1 life", "fill": Color("5b2943")},
@@ -2322,7 +2327,7 @@ func _draw_options_panel() -> void:
 		_draw_panel(badge, legend["fill"], _with_alpha(Color.WHITE, 0.1))
 		_draw_centered_label(Vector2(badge.get_center().x, badge.position.y + 17.0), legend["text"], 13, Color("fff6ea"))
 		_draw_label(Vector2(panel.position.x + 126.0, legend_y), legend["desc"], 15, Color("eef8ff"))
-		legend_y += 30.0
+		legend_y += 27.0
 	_draw_toggle_pill(_options_exit_rect(), "Exit Game", false)
 
 
