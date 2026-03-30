@@ -17,6 +17,7 @@ No Godot install is required for players.
 - `Space` or `Enter`: start, continue after level clear, or restart after game over
 - `Shift`: faster risky carve while drawing
 - `Esc` or `P`: pause or resume
+- `Q`: quit immediately
 - `M`: toggle music
 
 ## Development
@@ -31,3 +32,4 @@ More detail lives in [docs/development.md](./docs/development.md).
 
 - The Godot project at the repo root is the shipping source of truth.
 - Ralph tracking for this repo lives in `.agents/tasks/prd-dopaqix-native2.json`.
+- Audio assets in `assets/audio` are third-party source files used for the calmer cut SFX and music loop.

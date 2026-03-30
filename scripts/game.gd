@@ -9,11 +9,31 @@ const TILE_EMPTY := 0
 const TILE_SAFE := 1
 const TILE_TRAIL := 2
 
-const CELL := 10
+const CELL := 11
 const COLS := 80
 const ROWS := 60
-const BOARD_RECT := Rect2(Vector2(44.0, 128.0), Vector2(COLS * CELL, ROWS * CELL))
+const BOARD_RECT := Rect2(Vector2(36.0, 122.0), Vector2(COLS * CELL, ROWS * CELL))
 const CARDINALS := [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]
+const SIDEBAR_GAP := 24.0
+const MUSIC_ASSET_PATH := "res://assets/audio/zenostar_loop.ogg"
+const SLICE_ASSET_PATH := "res://assets/audio/cut_tick.ogg"
+const TITLE_LETTERS := [
+	{"char": "D", "color": "ff6b8a", "rotation": -7.0, "size": 46},
+	{"char": "o", "color": "ffb347", "rotation": 4.0, "size": 44},
+	{"char": "p", "color": "ffe066", "rotation": -3.0, "size": 45},
+	{"char": "a", "color": "72f1b8", "rotation": 6.0, "size": 43},
+	{"char": "Q", "color": "74c0fc", "rotation": -6.0, "size": 47},
+	{"char": "i", "color": "c77dff", "rotation": 5.0, "size": 43},
+	{"char": "X", "color": "ff8fab", "rotation": -4.0, "size": 46}
+]
+const TRAIL_RAINBOW := [
+	Color("ff5f86"),
+	Color("ff9f45"),
+	Color("ffe066"),
+	Color("72f1b8"),
+	Color("74c0fc"),
+	Color("c77dff")
+]
 
 const MOVE_INTERVAL := 0.07
 const SPARK_SPEED := 9.0
@@ -46,13 +66,13 @@ const PICKUP_META := {
 const THEME_DATA := [
 	{
 		"name": "Mainline",
-		"bg_a": "0a111d",
-		"bg_b": "131926",
-		"bg_c": "2b1b31",
+		"bg_a": "091019",
+		"bg_b": "0d1620",
+		"bg_c": "162532",
 		"rail": "49ff62",
-		"claim_fill": "9ec8ff15",
-		"trail_a": "f03c3c",
-		"trail_b": "b84dff",
+		"claim_fill": "d9e7ff10",
+		"trail_a": "ff5f86",
+		"trail_b": "74c0fc",
 		"enemy_core": "fdfdfd"
 	}
 ]
@@ -113,6 +133,8 @@ var danger_player: AudioStreamPlayer
 var sfx_players := []
 var sfx_index := 0
 var audio_streams := {}
+var music_asset_stream: AudioStream
+var slice_asset_stream: AudioStream
 var pause_button: Button
 var resume_button: Button
 var exit_button: Button
@@ -210,6 +232,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("pause"):
 		if state_name in ["playing", "paused"]:
 			_toggle_pause()
+	elif event.is_action_pressed("exit_game"):
+		_on_exit_button_pressed()
 	elif event.is_action_pressed("toggle_music"):
 		music_enabled = not music_enabled
 		_save_progress()
@@ -231,6 +255,26 @@ func _toggle_pause() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:
 		_layout_ui()
+
+
+func _exit_tree() -> void:
+	_release_audio_resources()
+
+
+func _release_audio_resources() -> void:
+	if music_player != null:
+		music_player.stop()
+		music_player.stream = null
+	if danger_player != null:
+		danger_player.stop()
+		danger_player.stream = null
+	for player_node in sfx_players:
+		if player_node != null:
+			player_node.stop()
+			player_node.stream = null
+	audio_streams.clear()
+	music_asset_stream = null
+	slice_asset_stream = null
 
 
 func _current_level_score_slice() -> int:
@@ -1397,7 +1441,13 @@ func _theme_color(key: String) -> Color:
 
 
 func _trail_color() -> Color:
-	return _theme_color("trail_a").lerp(_theme_color("trail_b"), 0.5 + sin(title_phase * 10.0) * 0.5)
+	return _rainbow_color(int(floor(title_phase * 8.0)))
+
+
+func _rainbow_color(index: int) -> Color:
+	var color: Color = TRAIL_RAINBOW[posmod(index, TRAIL_RAINBOW.size())]
+	var pulse := 0.08 + (sin(title_phase * 7.0 + float(index) * 0.65) * 0.5 + 0.5) * 0.12
+	return color.lerp(Color.WHITE, pulse)
 
 
 func _load_backgrounds() -> void:
@@ -1440,11 +1490,30 @@ func _pick_background_texture() -> Texture2D:
 
 
 func _load_texture_from_path(path: String) -> Texture2D:
+	if path == "":
+		return null
+	var resource := ResourceLoader.load(path)
+	if resource is Texture2D:
+		return resource
 	var image := Image.new()
 	var error := image.load(ProjectSettings.globalize_path(path))
 	if error != OK:
 		return null
 	return ImageTexture.create_from_image(image)
+
+
+func _load_audio_stream(path: String, loop: bool = false) -> AudioStream:
+	if path == "":
+		return null
+	if not ResourceLoader.exists(path, "AudioStream"):
+		return null
+	var resource := ResourceLoader.load(path)
+	if resource is AudioStream:
+		var stream: AudioStream = resource.duplicate()
+		if loop:
+			stream.set("loop", true)
+		return stream
+	return null
 
 
 func _assign_background_texture(texture: Texture2D) -> void:
@@ -1488,13 +1557,17 @@ func _draw_claimed_reveal_tile(tile_rect: Rect2, col: int, row: int) -> void:
 		Vector2(float(col) / float(COLS) * texture_size.x, float(row) / float(ROWS) * texture_size.y),
 		Vector2(texture_size.x / float(COLS), texture_size.y / float(ROWS))
 	)
-	draw_texture_rect_region(current_background_gray, tile_rect, region, Color(1, 1, 1, 0.92))
+	draw_texture_rect_region(current_background_gray, tile_rect, region, Color(1, 1, 1, 0.97))
 	if grain_texture != null:
-		draw_texture_rect(grain_texture, tile_rect, true, Color(1, 1, 1, 0.18))
+		draw_texture_rect(grain_texture, tile_rect, true, Color(1, 1, 1, 0.08))
 
 
 func _build_audio() -> void:
 	audio_streams = AudioSynth.create_sfx_library()
+	music_asset_stream = _load_audio_stream(MUSIC_ASSET_PATH, true)
+	slice_asset_stream = _load_audio_stream(SLICE_ASSET_PATH)
+	if slice_asset_stream != null:
+		audio_streams["slice"] = slice_asset_stream
 
 	music_player = AudioStreamPlayer.new()
 	add_child(music_player)
@@ -1514,7 +1587,7 @@ func _build_audio() -> void:
 
 
 func _refresh_music_streams() -> void:
-	audio_streams["music_calm"] = AudioSynth.create_music_stream(reveal_pool, false)
+	audio_streams["music_calm"] = music_asset_stream if music_asset_stream != null else AudioSynth.create_music_stream(reveal_pool, false)
 	audio_streams["music_danger"] = AudioSynth.create_music_stream(reveal_pool, true)
 	if music_player != null:
 		music_player.stream = audio_streams["music_calm"]
@@ -1534,8 +1607,8 @@ func _update_audio_mix() -> void:
 		danger_player.volume_db = -50.0
 		return
 	var volume_db := linear_to_db(max(0.001, music_volume))
-	music_player.volume_db = lerpf(-15.0, -4.0, clamp(1.0 - danger_level * 0.75, 0.0, 1.0)) + volume_db
-	danger_player.volume_db = lerpf(-36.0, -7.5, danger_level) + volume_db
+	music_player.volume_db = lerpf(-19.0, -11.0, clamp(1.0 - danger_level * 0.75, 0.0, 1.0)) + volume_db
+	danger_player.volume_db = lerpf(-48.0, -27.0, danger_level) + volume_db
 
 
 func _play_sfx(name: String) -> void:
@@ -1544,6 +1617,7 @@ func _play_sfx(name: String) -> void:
 	var player_node: AudioStreamPlayer = sfx_players[sfx_index % sfx_players.size()]
 	sfx_index += 1
 	player_node.stream = audio_streams[name]
+	player_node.volume_db = -13.0 if name == "slice" else 0.0
 	player_node.play()
 
 
@@ -1560,6 +1634,7 @@ func _ensure_input_actions() -> void:
 	_bind_key_action("accept", KEY_ENTER)
 	_bind_key_action("pause", KEY_ESCAPE)
 	_bind_key_action("pause", KEY_P)
+	_bind_key_action("exit_game", KEY_Q)
 	_bind_key_action("toggle_music", KEY_M)
 	_bind_key_action("boost_cut", KEY_SHIFT)
 
@@ -1667,13 +1742,19 @@ func _options_visible() -> bool:
 
 
 func _options_panel_rect() -> Rect2:
-	var width: float = 286.0
-	return Rect2(Vector2(size.x - width - 26.0, 18.0), Vector2(width, size.y - 36.0))
+	var x: float = BOARD_RECT.end.x + SIDEBAR_GAP
+	var width: float = maxf(272.0, size.x - x - 20.0)
+	return Rect2(Vector2(x, 18.0), Vector2(width, size.y - 36.0))
 
 
 func _options_control_rect(index: int) -> Rect2:
 	var panel := _options_panel_rect()
-	return Rect2(panel.position + Vector2(panel.size.x - 132.0, 118.0 + index * 58.0), Vector2(112.0, 34.0))
+	return Rect2(panel.position + Vector2(panel.size.x - 150.0, 142.0 + index * 58.0), Vector2(130.0, 34.0))
+
+
+func _options_exit_rect() -> Rect2:
+	var panel := _options_panel_rect()
+	return Rect2(Vector2(panel.position.x + 18.0, panel.end.y - 56.0), Vector2(panel.size.x - 36.0, 36.0))
 
 
 func _control_step_rect(base: Rect2, side: String) -> Rect2:
@@ -1720,6 +1801,8 @@ func _handle_option_click(point: Vector2) -> bool:
 		music_volume = max(0.0, music_volume - 0.1)
 	elif _control_step_rect(volume_rect, "right").has_point(point):
 		music_volume = min(1.0, music_volume + 0.1)
+	elif _options_exit_rect().has_point(point):
+		_on_exit_button_pressed()
 	else:
 		return true
 	music_volume = snappedf(music_volume, 0.1)
@@ -1885,16 +1968,16 @@ func _draw_board() -> void:
 	var frame := board.grow(18.0)
 	var outer := frame.grow(12.0)
 	var reveal_complete := state_name == "level_clear"
-	draw_rect(_shift_rect(outer, camera_offset * 0.38), _with_alpha(Color("26192b"), 0.9), true)
-	draw_rect(_shift_rect(frame, camera_offset * 0.3), _with_alpha(Color("121a24"), 0.96), true)
-	draw_rect(_shift_rect(board, camera_offset * 0.2), _with_alpha(Color("02050a"), 0.98), true)
+	draw_rect(_shift_rect(outer, camera_offset * 0.38), _with_alpha(Color("121720"), 0.94), true)
+	draw_rect(_shift_rect(frame, camera_offset * 0.3), _with_alpha(Color("0c1118"), 0.98), true)
+	draw_rect(_shift_rect(board, camera_offset * 0.2), _with_alpha(Color.BLACK, 1.0), true)
 	var board_rect := _shift_rect(board, camera_offset * 0.12)
 	if reveal_complete:
 		if current_background != null:
 			draw_texture_rect(current_background, board_rect, false, Color(1, 1, 1, 1.0))
-		draw_rect(board_rect, Color(1, 1, 1, 0.035), true)
+		draw_rect(board_rect, Color(1, 1, 1, 0.025), true)
 	elif grain_texture != null:
-		draw_texture_rect(grain_texture, board_rect, true, Color(1, 1, 1, 0.08 if state_name == "title" else 0.16))
+		draw_texture_rect(grain_texture, board_rect, true, Color(1, 1, 1, 0.05 if state_name == "title" else 0.11))
 
 	for scan in range(18):
 		var scan_y := board.position.y + 12.0 + scan * ((board.size.y - 24.0) / 17.0)
@@ -1906,20 +1989,20 @@ func _draw_board() -> void:
 				var rect: Rect2 = _shift_rect(_cell_rect(col, row), camera_offset * 0.24)
 				match grid[row][col]:
 					TILE_EMPTY:
-						var empty_color := Color("03070c")
+						var empty_color := Color("000000")
 						empty_color.a = 0.98
 						draw_rect(rect, empty_color, true)
 						if (col + row) % 2 == 0:
-							draw_rect(rect.grow(-3.0), Color(1, 1, 1, 0.012), true)
+							draw_rect(rect.grow(-3.0), Color(1, 1, 1, 0.008), true)
 					TILE_SAFE:
 						_draw_claimed_reveal_tile(rect, col, row)
 						var claim_color := _theme_color("claim_fill")
-						claim_color.a = 0.02
+						claim_color.a = 0.012
 						draw_rect(rect, claim_color, true)
-						draw_rect(rect.grow(-1.0), _with_alpha(_theme_color("rail"), 0.16), false, 1.0)
+						draw_rect(rect.grow(-1.0), _with_alpha(_theme_color("rail"), 0.14), false, 1.0)
 						draw_rect(Rect2(rect.position + Vector2(2.0, 2.0), Vector2(rect.size.x - 4.0, 2.0)), _with_alpha(Color.WHITE, 0.04), true)
 					TILE_TRAIL:
-						var pulse := _trail_color()
+						var pulse := _rainbow_color(col + row)
 						pulse.a = 0.94
 						draw_rect(rect.grow(-2.0), pulse, true)
 						draw_rect(rect.grow(-0.75), Color.WHITE, false, 1.0)
@@ -1942,8 +2025,9 @@ func _draw_player() -> void:
 	if dir == Vector2.ZERO:
 		dir = Vector2.RIGHT
 	var perp := Vector2(-dir.y, dir.x)
-	var core := Color("fff8db")
-	var shell := _theme_color("trail_b") if player["drawing"] else _theme_color("rail")
+	var core := Color("fffdf2")
+	var shell := Color("ffe066") if player["drawing"] else Color("66f5ff")
+	var accent := Color("ff6fa2")
 	if _effect_active("cookie"):
 		shell = Color("ffe561")
 	if _effect_active("bomb"):
@@ -1954,9 +2038,10 @@ func _draw_player() -> void:
 		var next: Vector2 = history[index + 1]["pos"] + camera_offset * 0.68
 		var tail_alpha := 1.0 - float(index) / float(max(1, history.size() - 1))
 		var tail_width := 11.0 * tail_alpha + 1.6
-		draw_line(current, next, _with_alpha(shell.lerp(Color("ffd8f3"), 0.3), tail_alpha * 0.34), tail_width)
+		var rainbow := _rainbow_color(index + int(floor(title_phase * 8.0)))
+		draw_line(current, next, _with_alpha(rainbow, tail_alpha * 0.42), tail_width)
 		draw_line(current, next, _with_alpha(Color.WHITE, tail_alpha * 0.12), max(1.0, tail_width * 0.25))
-	var tail_color := shell.lerp(Color("ff8ad0"), 0.35)
+	var tail_color := accent
 	var nose := pos + dir * 16.0
 	var left := pos + perp * 8.4 - dir * 1.8
 	var right := pos - perp * 8.4 - dir * 1.8
@@ -1972,7 +2057,7 @@ func _draw_player() -> void:
 	draw_colored_polygon(PackedVector2Array([pos + dir * 6.0, pos + perp * 3.6, pos - dir * 8.8, pos - perp * 3.6]), tail_color)
 	draw_colored_polygon(PackedVector2Array([nose - dir * 3.4 + perp * 3.0, nose - dir * 7.0, nose - dir * 3.4 - perp * 3.0]), core)
 	draw_line(pos - perp * 4.6 - dir * 2.1, pos + perp * 4.6 - dir * 2.1, _with_alpha(Color.WHITE, 0.38), 1.5)
-	draw_circle(pos - dir * 0.8, 2.2, Color("1c1329"))
+	draw_circle(pos - dir * 0.8, 2.2, Color("07101a"))
 	draw_circle(pos + dir * 4.6, 1.8, _with_alpha(Color.WHITE, 0.56))
 	if _effect_active("shield"):
 		var shield := _with_alpha(Color("85f6ff"), 0.32 + sin(title_phase * 9.0) * 0.08)
@@ -2199,12 +2284,12 @@ func _draw_overlay() -> void:
 
 func _draw_options_panel() -> void:
 	var panel := _options_panel_rect()
-	_draw_panel(panel, Color("0d121d", 0.92), _with_alpha(Color("242c3f"), 0.46))
-	_draw_label(panel.position + Vector2(18.0, 34.0), "DopaQiX", 42, Color("ffe27d"))
-	_draw_label(panel.position + Vector2(18.0, 78.0), "BETA CONTROLS", 13, Color("7f8baa"))
+	_draw_panel(panel, Color("0a1018", 0.94), _with_alpha(Color("243246"), 0.58))
+	_draw_candy_title(panel.position + Vector2(18.0, 42.0))
+	_draw_label(panel.position + Vector2(18.0, 96.0), "BETA CONTROLS", 13, Color("7f8baa"))
 	var labels := ["Speed", "Magic", "Reveal Pool", "Cheat Mode", "Music", "Volume"]
 	for index in range(labels.size()):
-		var y := panel.position.y + 140.0 + index * 58.0
+		var y := panel.position.y + 164.0 + index * 58.0
 		_draw_label(Vector2(panel.position.x + 18.0, y), labels[index], 16, Color("eef8ff"))
 	var speed_rect := _options_control_rect(0)
 	var magic_rect := _options_control_rect(1)
@@ -2219,13 +2304,14 @@ func _draw_options_panel() -> void:
 	_draw_toggle_pill(music_rect, "On" if music_enabled else "Off", music_enabled)
 	_draw_stepper(volume_rect, "%d%%" % int(round(music_volume * 100.0)))
 	_draw_label(panel.position + Vector2(18.0, panel.position.y + 18.0), "", 1, Color.WHITE)
-	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 506.0), "CONTROLS", 13, Color("7f8baa"))
-	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 542.0), "WASD or arrows: Move", 16, Color("eef8ff"))
-	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 568.0), "Space: Start cut / continue", 16, Color("eef8ff"))
-	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 594.0), "Shift: Fast risky carve", 16, Color("eef8ff"))
-	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 620.0), "P: Pause", 16, Color("eef8ff"))
-	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 664.0), "PICKUPS", 13, Color("7f8baa"))
-	var legend_y := panel.position.y + 698.0
+	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 524.0), "CONTROLS", 13, Color("7f8baa"))
+	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 560.0), "WASD or arrows: Move", 16, Color("eef8ff"))
+	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 586.0), "Space: Start cut / continue", 16, Color("eef8ff"))
+	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 612.0), "Shift: Fast risky carve", 16, Color("eef8ff"))
+	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 638.0), "P / Esc: Pause", 16, Color("eef8ff"))
+	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 664.0), "Q: Quit", 16, Color("eef8ff"))
+	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 708.0), "PICKUPS", 13, Color("7f8baa"))
+	var legend_y := panel.position.y + 742.0
 	for legend in [
 		{"text": "Bomb", "desc": "Slow 10s", "fill": Color("5b2f2b")},
 		{"text": "Heart", "desc": "+1 life", "fill": Color("5b2943")},
@@ -2237,6 +2323,7 @@ func _draw_options_panel() -> void:
 		_draw_centered_label(Vector2(badge.get_center().x, badge.position.y + 17.0), legend["text"], 13, Color("fff6ea"))
 		_draw_label(Vector2(panel.position.x + 126.0, legend_y), legend["desc"], 15, Color("eef8ff"))
 		legend_y += 30.0
+	_draw_toggle_pill(_options_exit_rect(), "Exit Game", false)
 
 
 func _draw_label(position: Vector2, text: String, font_size: int, color: Color) -> void:
@@ -2253,8 +2340,21 @@ func _draw_shadowed_label(position: Vector2, text: String, font_size: int, shado
 	_draw_label(position, text, font_size, fill)
 
 
+func _draw_candy_title(position: Vector2) -> void:
+	var advance_x := position.x
+	for index in range(TITLE_LETTERS.size()):
+		var letter = TITLE_LETTERS[index]
+		var font_size: int = letter["size"]
+		var wobble := sin(title_phase * 1.8 + index * 0.7) * 2.0
+		var baseline := Vector2(advance_x, position.y + wobble)
+		draw_set_transform(baseline, deg_to_rad(letter["rotation"]), Vector2.ONE)
+		_draw_shadowed_label(Vector2.ZERO, letter["char"], font_size, _with_alpha(Color("08101b"), 0.78), Color(letter["color"]))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		advance_x += ThemeDB.fallback_font.get_string_size(letter["char"], HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_size).x - 4.0
+
+
 func _draw_metric_card(rect: Rect2, label: String, value: String, accent: Color, value_size: int) -> void:
-	_draw_panel(rect, Color("0c1321", 0.64), _with_alpha(_theme_color("rail"), 0.16))
+	_draw_panel(rect, Color("0c1321", 0.7), _with_alpha(_theme_color("rail"), 0.18))
 	_draw_label(rect.position + Vector2(16.0, 22.0), label.to_upper(), 13, Color("a8bac7"))
 	_draw_label(rect.position + Vector2(16.0, 54.0), value, value_size, accent)
 
@@ -2326,8 +2426,8 @@ func _draw_cookie_icon(pos: Vector2, pulse: float) -> void:
 
 
 func _draw_toggle_pill(rect: Rect2, text: String, active: bool) -> void:
-	var fill := Color("133449", 0.82) if active else Color("221928", 0.82)
-	var stroke := _with_alpha(Color("8dfcff"), 0.28) if active else _with_alpha(Color("ffb8d0"), 0.24)
+	var fill := Color("123549", 0.82) if active else Color("171d27", 0.9)
+	var stroke := _with_alpha(Color("8dfcff"), 0.34) if active else _with_alpha(Color("ffd66c"), 0.22)
 	_draw_panel(rect, fill, stroke)
 	_draw_centered_label(Vector2(rect.get_center().x, rect.position.y + 23.0), text, 15, Color("f6fdff"))
 
