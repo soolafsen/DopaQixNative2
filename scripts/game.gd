@@ -14,7 +14,8 @@ const COLS := 80
 const ROWS := 60
 const BOARD_RECT := Rect2(Vector2(36.0, 122.0), Vector2(COLS * CELL, ROWS * CELL))
 const CARDINALS := [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]
-const SIDEBAR_GAP := 24.0
+const SIDEBAR_GAP := 14.0
+const SIDEBAR_WIDTH := 360.0
 const MUSIC_ASSET_PATH := "res://assets/audio/zenostar_loop.ogg"
 const SLICE_ASSET_PATH := "res://assets/audio/cut_tick.ogg"
 const TITLE_LETTERS := [
@@ -222,7 +223,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		if _options_visible() and _handle_option_click(event.position):
 			return
-		if state_name == "title" and BOARD_RECT.has_point(event.position):
+		if state_name == "title" and _board_rect().has_point(event.position):
 			_start_game()
 			return
 		if state_name == "level_clear":
@@ -728,8 +729,9 @@ func _enemy_occupied_cells(enemy: Dictionary) -> Array:
 
 
 func _nearest_empty_cell(point: Vector2) -> Dictionary:
-	var col: int = clamp(int((point.x - BOARD_RECT.position.x) / CELL), 1, COLS - 2)
-	var row: int = clamp(int((point.y - BOARD_RECT.position.y) / CELL), 1, ROWS - 2)
+	var board := _board_rect()
+	var col: int = clamp(int((point.x - board.position.x) / CELL), 1, COLS - 2)
+	var row: int = clamp(int((point.y - board.position.y) / CELL), 1, ROWS - 2)
 	if grid[row][col] == TILE_EMPTY:
 		return {"col": col, "row": row}
 	for radius in range(1, 4):
@@ -788,10 +790,11 @@ func _update_enemies(delta: float) -> float:
 
 
 func _position_hits_barrier(point: Vector2) -> bool:
-	if not BOARD_RECT.has_point(point):
+	var board := _board_rect()
+	if not board.has_point(point):
 		return true
-	var col: int = clamp(int((point.x - BOARD_RECT.position.x) / CELL), 0, COLS - 1)
-	var row: int = clamp(int((point.y - BOARD_RECT.position.y) / CELL), 0, ROWS - 1)
+	var col: int = clamp(int((point.x - board.position.x) / CELL), 0, COLS - 1)
+	var row: int = clamp(int((point.y - board.position.y) / CELL), 0, ROWS - 1)
 	return grid[row][col] != TILE_EMPTY
 
 
@@ -1308,14 +1311,15 @@ func _update_floaters(delta: float) -> void:
 func _drop_enemy_residue(enemy: Dictionary) -> void:
 	var points := [{"point": Vector2(enemy["x"], enemy["y"]), "intensity": 0.74}]
 	var segments := _qix_segments(enemy)
+	var board := _board_rect()
 	for segment in segments:
 		points.append({"point": segment["a"], "intensity": 0.52})
 		points.append({"point": segment["b"], "intensity": 0.52})
 	var seen := {}
 	for sample in points:
 		var point: Vector2 = sample["point"]
-		var col: int = clamp(int((point.x - BOARD_RECT.position.x) / CELL), 1, COLS - 2)
-		var row: int = clamp(int((point.y - BOARD_RECT.position.y) / CELL), 1, ROWS - 2)
+		var col: int = clamp(int((point.x - board.position.x) / CELL), 1, COLS - 2)
+		var row: int = clamp(int((point.y - board.position.y) / CELL), 1, ROWS - 2)
 		var key := _tile_key(col, row)
 		if seen.has(key):
 			continue
@@ -1382,19 +1386,29 @@ func _player_position() -> Vector2:
 	return _cell_center(player["col"], player["row"])
 
 
+func _board_rect() -> Rect2:
+	var cabinet_width: float = BOARD_RECT.size.x + SIDEBAR_GAP + SIDEBAR_WIDTH
+	var left: float = maxf(24.0, floor((size.x - cabinet_width) * 0.5))
+	var top: float = BOARD_RECT.position.y + maxf(0.0, floor((size.y - 900.0) * 0.42))
+	return Rect2(Vector2(left, top), BOARD_RECT.size)
+
+
 func _cell_center(col: int, row: int) -> Vector2:
-	return BOARD_RECT.position + Vector2(col * CELL + CELL * 0.5, row * CELL + CELL * 0.5)
+	var board := _board_rect()
+	return board.position + Vector2(col * CELL + CELL * 0.5, row * CELL + CELL * 0.5)
 
 
 func _point_to_cell(point: Vector2) -> Dictionary:
+	var board := _board_rect()
 	return {
-		"col": clamp(int((point.x - BOARD_RECT.position.x) / CELL), 0, COLS - 1),
-		"row": clamp(int((point.y - BOARD_RECT.position.y) / CELL), 0, ROWS - 1)
+		"col": clamp(int((point.x - board.position.x) / CELL), 0, COLS - 1),
+		"row": clamp(int((point.y - board.position.y) / CELL), 0, ROWS - 1)
 	}
 
 
 func _cell_rect(col: int, row: int) -> Rect2:
-	return Rect2(BOARD_RECT.position + Vector2(col * CELL, row * CELL), Vector2(CELL, CELL))
+	var board := _board_rect()
+	return Rect2(board.position + Vector2(col * CELL, row * CELL), Vector2(CELL, CELL))
 
 
 func _inside(col: int, row: int) -> bool:
@@ -1745,21 +1759,45 @@ func _options_visible() -> bool:
 
 
 func _options_panel_rect() -> Rect2:
-	var top: float = 22.0
-	var bottom: float = minf(size.y - 18.0, BOARD_RECT.end.y + 36.0)
-	var x: float = BOARD_RECT.end.x + SIDEBAR_GAP
-	var width: float = maxf(272.0, size.x - x - 20.0)
+	var board := _board_rect()
+	var top: float = maxf(18.0, board.position.y - 104.0)
+	var bottom: float = minf(size.y - 18.0, board.end.y + 22.0)
+	var x: float = board.end.x + SIDEBAR_GAP
+	var width: float = SIDEBAR_WIDTH
 	return Rect2(Vector2(x, top), Vector2(width, bottom - top))
 
 
-func _options_control_rect(index: int) -> Rect2:
+func _options_settings_rect() -> Rect2:
 	var panel := _options_panel_rect()
-	return Rect2(panel.position + Vector2(panel.size.x - 150.0, 132.0 + index * 54.0), Vector2(130.0, 34.0))
+	return Rect2(panel.position + Vector2(18.0, 104.0), Vector2(panel.size.x - 36.0, 300.0))
+
+
+func _options_controls_rect() -> Rect2:
+	var settings := _options_settings_rect()
+	return Rect2(Vector2(settings.position.x, settings.end.y + 12.0), Vector2(settings.size.x, 138.0))
+
+
+func _options_footer_rect() -> Rect2:
+	var panel := _options_panel_rect()
+	return Rect2(Vector2(panel.position.x + 18.0, panel.end.y - 52.0), Vector2(panel.size.x - 36.0, 34.0))
+
+
+func _options_pickups_rect() -> Rect2:
+	var controls := _options_controls_rect()
+	var footer := _options_footer_rect()
+	return Rect2(
+		Vector2(controls.position.x, controls.end.y + 12.0),
+		Vector2(controls.size.x, maxf(98.0, footer.position.y - controls.end.y - 24.0))
+	)
+
+
+func _options_control_rect(index: int) -> Rect2:
+	var settings := _options_settings_rect()
+	return Rect2(Vector2(settings.end.x - 154.0, settings.position.y + 18.0 + index * 46.0), Vector2(154.0, 34.0))
 
 
 func _options_exit_rect() -> Rect2:
-	var panel := _options_panel_rect()
-	return Rect2(Vector2(panel.position.x + 18.0, panel.end.y - 36.0), Vector2(panel.size.x - 36.0, 20.0))
+	return _options_footer_rect()
 
 
 func _control_step_rect(base: Rect2, side: String) -> Rect2:
@@ -1945,9 +1983,10 @@ func _draw_backdrop() -> void:
 		var offset := fmod(title_phase * 94.0 + stripe * 118.0, size.x + 320.0) - 160.0
 		var stripe_color := _theme_color("rail")
 		stripe_color.a = 0.05 + danger_level * 0.04
+		var board := _board_rect()
 		draw_line(
-			Vector2(offset, BOARD_RECT.position.y - 150.0),
-			Vector2(offset + 250.0, BOARD_RECT.end.y + 128.0),
+			Vector2(offset, board.position.y - 150.0),
+			Vector2(offset + 250.0, board.end.y + 128.0),
 			stripe_color,
 			1.8
 		)
@@ -1969,7 +2008,7 @@ func _draw_backdrop() -> void:
 
 
 func _draw_board() -> void:
-	var board := BOARD_RECT
+	var board := _board_rect()
 	var frame := board.grow(18.0)
 	var outer := frame.grow(12.0)
 	var reveal_complete := state_name == "level_clear"
@@ -2217,8 +2256,9 @@ func _draw_floaters() -> void:
 
 
 func _draw_hud() -> void:
-	var header_x := 30.0
-	var card_y := 20.0
+	var board := _board_rect()
+	var header_x := board.position.x - 6.0
+	var card_y := board.position.y - 102.0
 	var card_height := 56.0
 	var gap := 8.0
 	var card_width := 115.0
@@ -2236,7 +2276,7 @@ func _draw_hud() -> void:
 		var rect := Rect2(Vector2(header_x + index * (card_width + gap), card_y), Vector2(card_width, card_height))
 		_draw_metric_card(rect, card["label"], card["value"], card["accent"], card["size"])
 
-	var power_rect := Rect2(Vector2(30.0, 96.0), Vector2(BOARD_RECT.size.x + 28.0, 12.0))
+	var power_rect := Rect2(Vector2(board.position.x - 6.0, board.position.y - 26.0), Vector2(board.size.x + 28.0, 12.0))
 	draw_rect(power_rect, Color("10151f", 0.95), true)
 	var remaining: float = clamp(1.0 - elapsed_seconds / LEVEL_TIME_LIMIT, 0.0, 1.0)
 	var fill_color := Color("43ff60").lerp(Color("ff9d59"), 1.0 - remaining)
@@ -2249,14 +2289,15 @@ func _draw_hud() -> void:
 			effects.append("%s %.0fs" % [PICKUP_META[key]["title"], ceil(active_effects[key])])
 	if not effects.is_empty():
 		var effect_text := "  ".join(effects)
-		_draw_label(Vector2(BOARD_RECT.position.x, BOARD_RECT.end.y + 28.0), effect_text, 16, Color("e8f8ff"))
+		_draw_label(Vector2(board.position.x, board.end.y + 28.0), effect_text, 16, Color("e8f8ff"))
 	if status_message != "" and state_name not in ["paused", "death", "game_over"]:
-		_draw_label(Vector2(BOARD_RECT.end.x - 220.0, BOARD_RECT.end.y + 28.0), status_message, 16, Color("ffd9bc"))
+		_draw_label(Vector2(board.end.x - 220.0, board.end.y + 28.0), status_message, 16, Color("ffd9bc"))
 
 
 func _draw_overlay() -> void:
+	var board := _board_rect()
 	if state_name == "title":
-		var modal := Rect2(Vector2(BOARD_RECT.position.x + BOARD_RECT.size.x * 0.5 - 74.0, BOARD_RECT.position.y + BOARD_RECT.size.y * 0.5 - 78.0), Vector2(148.0, 156.0))
+		var modal := Rect2(Vector2(board.position.x + board.size.x * 0.5 - 74.0, board.position.y + board.size.y * 0.5 - 78.0), Vector2(148.0, 156.0))
 		_draw_panel(modal, Color("101623", 0.88), _with_alpha(Color("2d344a"), 0.5))
 		_draw_centered_label(Vector2(modal.get_center().x, modal.position.y + 34.0), "DOPAQIX", 14, Color("8f99b1"))
 		_draw_centered_label(Vector2(modal.get_center().x, modal.position.y + 70.0), "Press Start", 22, Color("dde7ff"))
@@ -2264,22 +2305,22 @@ func _draw_overlay() -> void:
 		_draw_panel(button_rect, Color("ffe27d"), _with_alpha(Color("fff5be"), 0.38))
 		_draw_centered_label(Vector2(button_rect.get_center().x, button_rect.position.y + 23.0), "Start Run", 18, Color("18120a"))
 	elif state_name == "paused":
-		var modal := Rect2(Vector2(BOARD_RECT.position.x + BOARD_RECT.size.x * 0.5 - 110.0, BOARD_RECT.position.y + BOARD_RECT.size.y * 0.5 - 46.0), Vector2(220.0, 92.0))
+		var modal := Rect2(Vector2(board.position.x + board.size.x * 0.5 - 110.0, board.position.y + board.size.y * 0.5 - 46.0), Vector2(220.0, 92.0))
 		_draw_panel(modal, Color("101623", 0.88), _with_alpha(Color("2d344a"), 0.5))
 		_draw_centered_label(Vector2(modal.get_center().x, modal.position.y + 34.0), "Paused", 28, Color("fff7dd"))
 		_draw_centered_label(Vector2(modal.get_center().x, modal.position.y + 64.0), "Press P", 18, Color("dff7ff"))
 	elif state_name == "level_clear":
-		var modal := Rect2(Vector2(BOARD_RECT.position.x + BOARD_RECT.size.x * 0.5 - 210.0, BOARD_RECT.end.y - 84.0), Vector2(420.0, 72.0))
+		var modal := Rect2(Vector2(board.position.x + board.size.x * 0.5 - 210.0, board.end.y - 84.0), Vector2(420.0, 72.0))
 		_draw_panel(modal, Color("101623", 0.82), _with_alpha(Color("ffe27d"), 0.24))
 		_draw_centered_label(Vector2(modal.get_center().x, modal.position.y + 30.0), "LEVEL %02d DETONATED" % level, 26, Color("fff7d8"))
 		_draw_centered_label(Vector2(modal.get_center().x, modal.position.y + 54.0), "Press Space or click to reveal the next board", 16, Color("dffcff"))
 	elif state_name == "death":
-		var modal := Rect2(Vector2(BOARD_RECT.position.x + BOARD_RECT.size.x * 0.5 - 126.0, BOARD_RECT.position.y + BOARD_RECT.size.y * 0.5 - 46.0), Vector2(252.0, 92.0))
+		var modal := Rect2(Vector2(board.position.x + board.size.x * 0.5 - 126.0, board.position.y + board.size.y * 0.5 - 46.0), Vector2(252.0, 92.0))
 		_draw_panel(modal, Color("220d13", 0.86), _with_alpha(Color("ff8c73"), 0.28))
 		_draw_centered_label(Vector2(modal.get_center().x, modal.position.y + 34.0), "CRASH", 30, Color("fff0dc"))
 		_draw_centered_label(Vector2(modal.get_center().x, modal.position.y + 64.0), status_message, 16, Color("ffd0c0"))
 	elif state_name == "game_over":
-		var modal := Rect2(Vector2(BOARD_RECT.position.x + BOARD_RECT.size.x * 0.5 - 160.0, BOARD_RECT.position.y + BOARD_RECT.size.y * 0.5 - 74.0), Vector2(320.0, 148.0))
+		var modal := Rect2(Vector2(board.position.x + board.size.x * 0.5 - 160.0, board.position.y + board.size.y * 0.5 - 74.0), Vector2(320.0, 148.0))
 		_draw_panel(modal, Color("101623", 0.9), _with_alpha(Color("2d344a"), 0.5))
 		_draw_centered_label(Vector2(modal.get_center().x, modal.position.y + 44.0), "Game Over", 34, Color("fff7d8"))
 		_draw_centered_label(Vector2(modal.get_center().x, modal.position.y + 76.0), status_message if status_message != "" else "The board bit back.", 18, Color("ffd4c4"))
@@ -2289,13 +2330,20 @@ func _draw_overlay() -> void:
 
 func _draw_options_panel() -> void:
 	var panel := _options_panel_rect()
-	_draw_panel(panel, Color("0a1018", 0.94), _with_alpha(Color("243246"), 0.58))
-	_draw_candy_title(panel.position + Vector2(18.0, 38.0))
-	_draw_label(panel.position + Vector2(18.0, 84.0), "BETA CONTROLS", 13, Color("7f8baa"))
+	var settings := _options_settings_rect()
+	var controls := _options_controls_rect()
+	var pickups_rect := _options_pickups_rect()
+	_draw_panel(panel, Color("0a1017", 0.97), _with_alpha(Color("31414f"), 0.52))
+	_draw_candy_title(panel.position + Vector2(18.0, 46.0))
+	_draw_label(panel.position + Vector2(18.0, 92.0), "BETA CONTROLS", 13, Color("a0adc3"))
+	_draw_panel(settings, Color("08111a", 0.98), _with_alpha(Color("2f4a5d"), 0.42))
+	_draw_panel(controls, Color("08111a", 0.98), _with_alpha(Color("544031"), 0.34))
+	_draw_panel(pickups_rect, Color("08111a", 0.98), _with_alpha(Color("36505f"), 0.34))
+	_draw_label(settings.position + Vector2(16.0, 26.0), "SETTINGS", 13, Color("8ea3b4"))
 	var labels := ["Speed", "Magic", "Reveal Pool", "Cheat Mode", "Music", "Volume"]
 	for index in range(labels.size()):
-		var y := panel.position.y + 152.0 + index * 54.0
-		_draw_label(Vector2(panel.position.x + 18.0, y), labels[index], 16, Color("eef8ff"))
+		var y := settings.position.y + 52.0 + index * 46.0
+		_draw_label(Vector2(settings.position.x + 16.0, y), labels[index], 16, Color("eef8ff"))
 	var speed_rect := _options_control_rect(0)
 	var magic_rect := _options_control_rect(1)
 	var pool_rect := _options_control_rect(2)
@@ -2308,27 +2356,30 @@ func _draw_options_panel() -> void:
 	_draw_toggle_pill(cheat_rect, "On" if cheat_enabled else "Off", cheat_enabled)
 	_draw_toggle_pill(music_rect, "On" if music_enabled else "Off", music_enabled)
 	_draw_stepper(volume_rect, "%d%%" % int(round(music_volume * 100.0)))
-	_draw_label(panel.position + Vector2(18.0, panel.position.y + 18.0), "", 1, Color.WHITE)
-	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 474.0), "CONTROLS", 13, Color("7f8baa"))
-	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 506.0), "WASD or arrows: Move", 15, Color("eef8ff"))
-	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 530.0), "Space: Start cut / continue", 15, Color("eef8ff"))
-	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 554.0), "Shift: Fast risky carve", 15, Color("eef8ff"))
-	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 578.0), "P / Esc: Pause", 15, Color("eef8ff"))
-	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 602.0), "Q: Quit", 15, Color("eef8ff"))
-	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 624.0), "PICKUPS", 13, Color("7f8baa"))
-	var legend_y := panel.position.y + 648.0
+	_draw_label(controls.position + Vector2(16.0, 26.0), "CONTROLS", 13, Color("8ea3b4"))
+	var control_lines := [
+		"WASD or arrows: Move",
+		"Space: Start cut / continue",
+		"Shift: Fast risky carve",
+		"P / Esc: Pause",
+		"Q: Quit"
+	]
+	for index in range(control_lines.size()):
+		_draw_label(Vector2(controls.position.x + 16.0, controls.position.y + 50.0 + index * 18.0), control_lines[index], 14, Color("eef8ff"))
+	_draw_label(pickups_rect.position + Vector2(16.0, 26.0), "PICKUPS", 13, Color("8ea3b4"))
+	var legend_y := pickups_rect.position.y + 54.0
 	for legend in [
 		{"text": "Bomb", "desc": "Slow 10s", "fill": Color("5b2f2b")},
 		{"text": "Heart", "desc": "+1 life", "fill": Color("5b2943")},
 		{"text": "Muffin", "desc": "Speed boost", "fill": Color("58523a")},
 		{"text": "Shield", "desc": "Immune 10s", "fill": Color("223d4f")}
 	]:
-		var badge := Rect2(Vector2(panel.position.x + 18.0, legend_y - 16.0), Vector2(90.0, 24.0))
+		var badge := Rect2(Vector2(pickups_rect.position.x + 16.0, legend_y - 16.0), Vector2(96.0, 24.0))
 		_draw_panel(badge, legend["fill"], _with_alpha(Color.WHITE, 0.1))
 		_draw_centered_label(Vector2(badge.get_center().x, badge.position.y + 17.0), legend["text"], 13, Color("fff6ea"))
-		_draw_label(Vector2(panel.position.x + 126.0, legend_y), legend["desc"], 14, Color("eef8ff"))
-		legend_y += 24.0
-	_draw_toggle_pill(_options_exit_rect(), "Exit Game", false)
+		_draw_label(Vector2(pickups_rect.position.x + 128.0, legend_y), legend["desc"], 14, Color("eef8ff"))
+		legend_y += 22.0
+	_draw_action_pill(_options_exit_rect(), "Exit Game")
 
 
 func _draw_label(position: Vector2, text: String, font_size: int, color: Color) -> void:
@@ -2431,10 +2482,15 @@ func _draw_cookie_icon(pos: Vector2, pulse: float) -> void:
 
 
 func _draw_toggle_pill(rect: Rect2, text: String, active: bool) -> void:
-	var fill := Color("123549", 0.82) if active else Color("171d27", 0.9)
-	var stroke := _with_alpha(Color("8dfcff"), 0.34) if active else _with_alpha(Color("ffd66c"), 0.22)
+	var fill := Color("153545", 0.92) if active else Color("111720", 0.96)
+	var stroke := _with_alpha(Color("7cf5ff"), 0.46) if active else _with_alpha(Color("ffe27d"), 0.16)
 	_draw_panel(rect, fill, stroke)
 	_draw_centered_label(Vector2(rect.get_center().x, rect.position.y + 23.0), text, 15, Color("f6fdff"))
+
+
+func _draw_action_pill(rect: Rect2, text: String) -> void:
+	_draw_panel(rect, Color("ffe27d"), _with_alpha(Color("fff5bf"), 0.42))
+	_draw_centered_label(Vector2(rect.get_center().x, rect.position.y + 23.0), text, 17, Color("171008"))
 
 
 func _draw_stepper(rect: Rect2, value: String) -> void:
