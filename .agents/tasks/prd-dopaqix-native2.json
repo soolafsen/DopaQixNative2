@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "project": "DopaQixNative2",
+  "overview": "Port the DopaQiX web game from main into a native Windows Godot build while preserving the web game's rail-cutting rules, reveal loop, pickup behavior, soundtrack feel, and front-end framing closely enough that it reads as the same game, not a reinterpretation.",
+  "goals": [
+    "Match the main-branch gameplay loop: rail-only movement, empty-field cuts, area capture, sparks on rail or trail, QiX in field space, time pressure, scoring, and level progression.",
+    "Match the main-branch presentation closely: dark board, candy HUD, grayscale claimed reveal during play, full image reveal on level clear, right-side control panel, and reactive synth music.",
+    "Ship a Windows-native Godot export with an exe and zip that a non-technical player can launch directly."
+  ],
+  "nonGoals": [
+    "Do not preserve the browser runtime or index.html shipping path.",
+    "Do not add a new interpretation-heavy art direction that drifts from the main-branch web game."
+  ],
+  "qualityGates": [
+    "godot --headless --path . --quit-after 1",
+    "powershell -ExecutionPolicy Bypass -File .\\scripts\\export-windows.ps1"
+  ],
+  "stories": [
+    {
+      "id": "US-001",
+      "title": "Port core web rules into Godot",
+      "status": "done",
+      "dependsOn": [],
+      "description": "Bring over the web game's movement, trail, capture, enemy, spark, pickup, score, and timer logic so the core run feels like the browser source.",
+      "acceptanceCriteria": [
+        "The player can only travel the rail when not drawing and can only start a cut from rail into adjacent empty field.",
+        "Sparks stay on rail or active trail paths, QiX stay in field space, and trail contact still costs a life.",
+        "Scoring, level goal, burst threshold, and timer all update during active play."
+      ]
+    },
+    {
+      "id": "US-002",
+      "title": "Match the main presentation more closely",
+      "status": "done",
+      "dependsOn": [
+        "US-001"
+      ],
+      "description": "Rework the Godot HUD, sidebar, overlays, reveal rendering, and music so the native game reads as the same product family as the web build.",
+      "acceptanceCriteria": [
+        "The board keeps the dark framed look with grayscale reveal during play and full image reveal on level clear.",
+        "The top HUD and right-side panel communicate the same information and controls as the web version.",
+        "Music changes with reveal pool and intensifies under danger instead of using a generic background loop."
+      ]
+    },
+    {
+      "id": "US-003",
+      "title": "Package and release a player build",
+      "status": "pending",
+      "dependsOn": [
+        "US-001",
+        "US-002"
+      ],
+      "description": "Export a Windows build, zip it with a short run note, and publish it from the new repo.",
+      "acceptanceCriteria": [
+        "The export script creates a Windows executable and matching win64 zip under dist.",
+        "The repo documents the release path and links players to the latest release.",
+        "The built artifact is suitable for non-technical players to unzip and run."
+      ]
+    }
+  ]
+}

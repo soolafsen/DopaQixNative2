@@ -1,0 +1,16 @@
+.godot/
+dist/
+node_modules/
+playwright-report/
+test-results/
+_vendor/
+ship/
+src/
+tests/
+*.import
+*.uid
+.ralph/.tmp/
+.ralph/runs/
+.ralph/activity.log
+.ralph/errors.log
+.agents/tasks/*.overview.md

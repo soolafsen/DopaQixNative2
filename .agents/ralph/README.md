@@ -1,0 +1,134 @@
+# Ralph
+
+<img src="ralph.webp" alt="Ralph" width="50%" />
+
+Ralph is a file-based agent loop for autonomous coding. This fork is tuned for Codex on Windows and is optimized for resumable PRD-driven work rather than one-off chat turns.
+
+Ralph is a single-agent, multi-iteration loop: it works through one PRD story at a time rather than coordinating multiple agents at once.
+
+With respect to Geoffrey Huntley, who originated the Ralph / Ralph Wiggum loop concept. If you want the original framing, start with [how-to-ralph-wiggum](https://github.com/ghuntley/how-to-ralph-wiggum).
+
+## Not Vanilla Ralph
+
+This fork intentionally incorporates ideas learned from GSD and lean-ctx work rather than staying as a stock Ralph loop.
+
+- Windows-first Codex runner behavior, including SDK-backed supervision and quieter helper process handling on Windows
+- fresh per-iteration context plus bounded progress, recipe, and strategy memory so longer runs do not decay into context rot
+- layered benchmark suites (`smoke`, `quick`, `hourly`, `deep`) backed by deterministic PRD benchmark skills for repeatable tuning
+- long-run loop resilience features such as heartbeat output, hang recovery, and built-in local verification paths
+
+Details live in [docs/usage-reference.md](docs/usage-reference.md) and [docs/benchmarking.md](docs/benchmarking.md).
+
+## Quick Start
+
+TL;DR:
+
+```bash
+npm i -g github:soolafsen/ralph#main
+ralph install
+ralph prd
+ralph build
+```
+
+Enough to get going. Details below.
+
+Install Ralph from GitHub:
+
+```bash
+npm i -g github:soolafsen/ralph#main
+```
+
+Install the project templates in the repo you want Ralph to work on:
+
+```bash
+ralph install
+```
+
+`ralph install` also offers to install the bundled skills Ralph expects for normal use.
+
+If that repo already has `.agents/ralph`, the local copy wins. Refresh it with:
+
+```bash
+ralph install --force
+```
+
+Create a PRD:
+
+```bash
+ralph prd "Add a small JSON CLI for parsing and filtering a file"
+```
+
+If you already have a `plan.md`, you can often just run:
+
+```bash
+ralph prd
+```
+
+When you do that, Ralph will look for `cursor-plan.md`, `plan.md`, and `*.plan.md` in the repo root and use one of them before falling back to manual entry.
+
+Or use an existing plan file:
+
+```bash
+ralph prd --plan plan.md
+```
+
+Run the normal build loop:
+
+```bash
+ralph build
+```
+
+That is the real default path: Ralph runs up to its default iteration limit and stops early when all stories are done.
+
+Ralph works best when the repo pushes back with real checks; good backpressure keeps the loop honest.
+
+Run one build iteration:
+
+```bash
+ralph build 1
+```
+
+Useful first checks:
+
+```bash
+ralph doctor
+ralph overview
+```
+
+Ralph now uses terse progress output by default. Use `--verbose` if you want the full live agent output in the terminal instead of reading the detailed run logs under `.ralph/runs/`.
+
+## Build Modes
+
+Most users should start with normal `ralph build`.
+
+- `ralph build`: default mode for normal multi-story Ralph work.
+- `ralph build 1`: one focused iteration when you want a smaller pass.
+- `ralph build 1 --no-commit`: useful first test run when you want Ralph to work the loop without creating a commit.
+- `ralph build --barebones`: most stripped-down loop; defaults to one iteration and avoids extra verification unless the story or quality gates require it.
+- `ralph build --verbose`: stream the full live agent output instead of the default terse progress view.
+
+More detail on advanced flags, including `--tiny`, lives in [docs/usage-reference.md](docs/usage-reference.md).
+
+## Benchmarks
+
+For regular benchmark feedback, start with:
+
+```bash
+ralph bench:quick
+```
+
+Benchmark suite details live in [docs/benchmarking.md](docs/benchmarking.md).
+
+## Docs
+
+- [Usage reference](docs/usage-reference.md)
+- [Benchmarking](docs/benchmarking.md)
+
+## When Ralph Fits
+
+Use Ralph when you want a resumable PRD-driven loop instead of a one-off prompt.
+
+- Good fit: multi-step repo work, benchmarks, iterative cleanup, or changes where you want progress tracked on disk.
+- Less useful: tiny one-file edits where a direct pass in your AI editor or agent is faster than creating and running a PRD.
+- What to expect: Ralph reads the current repo state each iteration, completes one story at a time, and writes logs and progress under `.ralph/`.
+- Why this helps: each iteration starts with fresh on-disk context plus compact learned state, which helps avoid context rot and makes longer unsupervised runs more reliable.
