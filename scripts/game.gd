@@ -2059,13 +2059,12 @@ func _draw_board() -> void:
 	if reveal_complete:
 		if current_background != null:
 			draw_texture_rect(current_background, _background_draw_rect(current_background.get_size(), board_rect), false, Color(1, 1, 1, 1.0))
-		draw_rect(board_rect, Color(0, 0, 0, 0.015), true)
 	elif grain_texture != null:
 		draw_texture_rect(grain_texture, board_rect, true, Color(1, 1, 1, 0.05 if state_name == "title" else 0.11))
 
 	for scan in range(18):
 		var scan_y := board.position.y + 12.0 + scan * ((board.size.y - 24.0) / 17.0)
-		draw_rect(Rect2(Vector2(board.position.x + 8.0, scan_y), Vector2(board.size.x - 16.0, 2.0)), _with_alpha(Color.WHITE, 0.003 if reveal_complete else 0.012), true)
+		draw_rect(Rect2(Vector2(board.position.x + 8.0, scan_y), Vector2(board.size.x - 16.0, 2.0)), _with_alpha(Color.WHITE, 0.0 if reveal_complete else 0.012), true)
 
 	if not reveal_complete:
 		for row in range(ROWS):
