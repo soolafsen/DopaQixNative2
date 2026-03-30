@@ -2,6 +2,12 @@
 
 Native Godot 4 Windows port of the DopaQiX web game on `main`, rebuilt to stay close to the original gameplay loop, board framing, reveal mechanic, pickups, and synth-heavy arcade feel while shipping as a simple Windows zip bundle.
 
+<p align="center">
+  <img src="docs/frontpage.png" alt="DopaQixNative2 gameplay illustration" width="960">
+</p>
+
+> TODO: Better reveal images coming.
+
 ## Play Now
 
 1. Go to [Releases](https://github.com/soolafsen/DopaQixNative2/releases/latest).
