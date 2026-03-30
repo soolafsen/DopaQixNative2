@@ -67,3 +67,7 @@ Before claiming parity or closing the issue, manually verify all of the followin
 - the player cannot move freely across all safe tiles
 - sparks stay on rail or trail paths
 - QiX stay in empty field space
+
+## Future Gameplay Idea
+
+- Consider a tougher spark-cut interaction for a later version: when a spark reaches the player's live cut, it should ignite that cut and burn along it like a fuse toward the player, hindering or partially consuming the cut instead of causing an immediate simple fail state.
