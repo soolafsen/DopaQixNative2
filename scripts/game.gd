@@ -1576,16 +1576,22 @@ func _build_grain_texture() -> void:
 	grain_texture = ImageTexture.create_from_image(image)
 
 
-func _background_source_region(texture_size: Vector2) -> Rect2:
+func _background_draw_rect(texture_size: Vector2, target_rect: Rect2) -> Rect2:
 	if texture_size.x <= 0.0 or texture_size.y <= 0.0:
-		return Rect2(Vector2.ZERO, texture_size)
-	var board_aspect := BOARD_RECT.size.x / BOARD_RECT.size.y
+		return target_rect
+	var board_aspect := target_rect.size.x / target_rect.size.y
 	var texture_aspect := texture_size.x / texture_size.y
 	if texture_aspect > board_aspect:
-		var crop_width := texture_size.y * board_aspect
-		return Rect2(Vector2((texture_size.x - crop_width) * 0.5, 0.0), Vector2(crop_width, texture_size.y))
-	var crop_height := texture_size.x / board_aspect
-	return Rect2(Vector2(0.0, (texture_size.y - crop_height) * 0.5), Vector2(texture_size.x, crop_height))
+		var draw_height := target_rect.size.x / texture_aspect
+		return Rect2(
+			Vector2(target_rect.position.x, target_rect.position.y + (target_rect.size.y - draw_height) * 0.5),
+			Vector2(target_rect.size.x, draw_height)
+		)
+	var draw_width := target_rect.size.y * texture_aspect
+	return Rect2(
+		Vector2(target_rect.position.x + (target_rect.size.x - draw_width) * 0.5, target_rect.position.y),
+		Vector2(draw_width, target_rect.size.y)
+	)
 
 
 func _draw_claimed_reveal_tile(tile_rect: Rect2, col: int, row: int) -> void:
@@ -1594,17 +1600,22 @@ func _draw_claimed_reveal_tile(tile_rect: Rect2, col: int, row: int) -> void:
 	var texture_size := current_background_gray.get_size()
 	if texture_size.x <= 0.0 or texture_size.y <= 0.0:
 		return
-	var source := _background_source_region(texture_size)
-	var region := Rect2(
-		Vector2(
-			source.position.x + float(col) / float(COLS) * source.size.x,
-			source.position.y + float(row) / float(ROWS) * source.size.y
-		),
-		Vector2(source.size.x / float(COLS), source.size.y / float(ROWS))
+	var board_rect := _shift_rect(_board_rect(), camera_offset * 0.24)
+	var draw_rect := _background_draw_rect(texture_size, board_rect)
+	var clipped := draw_rect.intersection(tile_rect)
+	if clipped.size.x <= 0.0 or clipped.size.y <= 0.0:
+		return
+	var uv_pos := Vector2(
+		(clipped.position.x - draw_rect.position.x) / draw_rect.size.x * texture_size.x,
+		(clipped.position.y - draw_rect.position.y) / draw_rect.size.y * texture_size.y
 	)
-	draw_texture_rect_region(current_background_gray, tile_rect, region, Color(1, 1, 1, 1.0))
+	var uv_size := Vector2(
+		clipped.size.x / draw_rect.size.x * texture_size.x,
+		clipped.size.y / draw_rect.size.y * texture_size.y
+	)
+	draw_texture_rect_region(current_background_gray, clipped, Rect2(uv_pos, uv_size), Color(1, 1, 1, 1.0))
 	if grain_texture != null:
-		draw_texture_rect(grain_texture, tile_rect, true, Color(1, 1, 1, 0.035))
+		draw_texture_rect(grain_texture, clipped, true, Color(1, 1, 1, 0.035))
 
 
 func _build_audio() -> void:
@@ -2047,7 +2058,7 @@ func _draw_board() -> void:
 	var board_rect := _shift_rect(board, camera_offset * 0.12)
 	if reveal_complete:
 		if current_background != null:
-			draw_texture_rect_region(current_background, board_rect, _background_source_region(current_background.get_size()), Color(1, 1, 1, 1.0))
+			draw_texture_rect(current_background, _background_draw_rect(current_background.get_size(), board_rect), false, Color(1, 1, 1, 1.0))
 		draw_rect(board_rect, Color(0, 0, 0, 0.015), true)
 	elif grain_texture != null:
 		draw_texture_rect(grain_texture, board_rect, true, Color(1, 1, 1, 0.05 if state_name == "title" else 0.11))
