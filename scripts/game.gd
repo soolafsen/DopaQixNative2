@@ -1389,7 +1389,7 @@ func _player_position() -> Vector2:
 func _board_rect() -> Rect2:
 	var cabinet_width: float = BOARD_RECT.size.x + SIDEBAR_GAP + SIDEBAR_WIDTH
 	var left: float = maxf(24.0, floor((size.x - cabinet_width) * 0.5))
-	var top: float = BOARD_RECT.position.y + maxf(0.0, floor((size.y - 900.0) * 0.42))
+	var top: float = clampf(floor(size.y * 0.12), 92.0, 122.0)
 	return Rect2(Vector2(left, top), BOARD_RECT.size)
 
 
@@ -2258,7 +2258,7 @@ func _draw_floaters() -> void:
 func _draw_hud() -> void:
 	var board := _board_rect()
 	var header_x := board.position.x - 6.0
-	var card_y := board.position.y - 102.0
+	var card_y := maxf(18.0, board.position.y - 78.0)
 	var card_height := 56.0
 	var gap := 8.0
 	var card_width := 115.0
@@ -2276,11 +2276,11 @@ func _draw_hud() -> void:
 		var rect := Rect2(Vector2(header_x + index * (card_width + gap), card_y), Vector2(card_width, card_height))
 		_draw_metric_card(rect, card["label"], card["value"], card["accent"], card["size"])
 
-	var power_rect := Rect2(Vector2(board.position.x - 6.0, board.position.y - 26.0), Vector2(board.size.x + 28.0, 12.0))
+	var power_rect := Rect2(Vector2(board.position.x - 6.0, board.position.y - 14.0), Vector2(board.size.x + 28.0, 10.0))
 	draw_rect(power_rect, Color("10151f", 0.95), true)
 	var remaining: float = clamp(1.0 - elapsed_seconds / LEVEL_TIME_LIMIT, 0.0, 1.0)
 	var fill_color := Color("43ff60").lerp(Color("ff9d59"), 1.0 - remaining)
-	draw_rect(Rect2(power_rect.position + Vector2(4.0, 3.0), Vector2((power_rect.size.x - 8.0) * remaining, 6.0)), fill_color, true)
+	draw_rect(Rect2(power_rect.position + Vector2(4.0, 2.0), Vector2((power_rect.size.x - 8.0) * remaining, 6.0)), fill_color, true)
 	draw_rect(power_rect, _with_alpha(Color("ecffef"), 0.1), false, 1.0)
 
 	var effects := []
