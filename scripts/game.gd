@@ -88,7 +88,6 @@ var pickups := []
 var particles := []
 var floaters := []
 var enemy_residue := []
-var cut_burn_marker := {}
 
 var background_paths := []
 var background_pools := {"random": [], "aww": [], "funny": [], "pinup": []}
@@ -175,7 +174,6 @@ func _process(delta: float) -> void:
 	if state_name != "paused":
 		_update_particles(delta)
 		_update_floaters(delta)
-		_update_cut_burn_marker(delta)
 	_update_audio_mix()
 	_layout_ui()
 	_refresh_ui()
@@ -362,7 +360,6 @@ func _start_level_data(level_number: int) -> void:
 	pickups.clear()
 	particles.clear()
 	floaters.clear()
-	cut_burn_marker.clear()
 	enemy_residue.clear()
 	capture_percent = _compute_capture_percent()
 	_reset_burst_threshold()
@@ -376,7 +373,6 @@ func _respawn_after_death() -> void:
 	_spawn_sparks()
 	pickups.clear()
 	enemy_residue.clear()
-	cut_burn_marker.clear()
 	state_name = "playing"
 	state_timer = 0.0
 	status_message = ""
@@ -859,14 +855,6 @@ func _update_sparks(delta: float) -> float:
 			while spark["history"].size() > 6:
 				spark["history"].pop_back()
 
-			if player["drawing"] and grid[spark["row"]][spark["col"]] == TILE_TRAIL:
-				var hit_pos := _cell_center(spark["col"], spark["row"])
-				_show_cut_burn(hit_pos)
-				_spawn_particles(hit_pos, Color("ffd7a3"), 18, 180.0, 0.4, 3.0)
-				_float_text(hit_pos, "CUT BURNED", Color("fff0c4"))
-				_lose_life("A spark burned your cut.")
-				return 1.0
-
 		var distance: int = abs(int(spark["col"]) - int(player["col"])) + abs(int(spark["row"]) - int(player["row"]))
 		max_danger = max(max_danger, clamp((15.0 - distance) / 11.0, 0.0, 1.0))
 	return max_danger
@@ -874,6 +862,9 @@ func _update_sparks(delta: float) -> float:
 
 func _spark_targets() -> Array:
 	var targets := []
+	if player["drawing"] and _is_spark_tile(player["col"], player["row"]):
+		targets.append({"col": player["col"], "row": player["row"]})
+		return targets
 	var nearby_rail := [
 		{"col": player["col"], "row": player["row"]},
 		{"col": int(player["col"]) + 1, "row": player["row"]},
@@ -1280,14 +1271,6 @@ func _spawn_particles(position: Vector2, color: Color, amount: int, speed: float
 		)
 
 
-func _show_cut_burn(position: Vector2) -> void:
-	cut_burn_marker = {
-		"pos": position,
-		"life": 0.9,
-		"max_life": 0.9
-	}
-
-
 func _float_text(position: Vector2, text: String, color: Color) -> void:
 	floaters.append(
 		{
@@ -1321,14 +1304,6 @@ func _update_floaters(delta: float) -> void:
 		floater["pos"] += Vector2(0.0, -34.0) * delta
 		survivors.append(floater)
 	floaters = survivors
-
-
-func _update_cut_burn_marker(delta: float) -> void:
-	if cut_burn_marker.is_empty():
-		return
-	cut_burn_marker["life"] = max(0.0, float(cut_burn_marker["life"]) - delta)
-	if cut_burn_marker["life"] <= 0.0:
-		cut_burn_marker.clear()
 
 
 func _drop_enemy_residue(enemy: Dictionary) -> void:
@@ -2077,7 +2052,6 @@ func _draw_board() -> void:
 		draw_rect(_shift_rect(board, camera_offset * 0.18), _with_alpha(Color.WHITE, 0.02), true)
 		draw_rect(_shift_rect(board.grow(-10.0), camera_offset * 0.08), _with_alpha(Color.BLACK, 0.03), false, 2.0)
 
-	_draw_cut_burn_marker()
 	draw_rect(_shift_rect(board, camera_offset * 0.18), _with_alpha(_theme_color("rail"), 0.5), false, 2.0)
 	draw_rect(_shift_rect(board.grow(-6.0), camera_offset * 0.08), _with_alpha(Color("ffffff"), 0.08), false, 1.0)
 	_draw_candy_frame(board)
@@ -2299,20 +2273,6 @@ func _draw_floaters() -> void:
 		var color: Color = floater["color"]
 		color.a = alpha
 		draw_string(ThemeDB.fallback_font, floater["pos"] + camera_offset * 0.18, floater["text"], HORIZONTAL_ALIGNMENT_LEFT, -1.0, 22, color)
-
-
-func _draw_cut_burn_marker() -> void:
-	if cut_burn_marker.is_empty():
-		return
-	var life: float = float(cut_burn_marker.get("life", 0.0))
-	var max_life: float = maxf(0.001, float(cut_burn_marker.get("max_life", 1.0)))
-	var alpha: float = clamp(life / max_life, 0.0, 1.0)
-	var pos: Vector2 = cut_burn_marker["pos"] + camera_offset * 0.24
-	var radius := 12.0 + (1.0 - alpha) * 8.0 + sin(title_phase * 14.0) * 1.6
-	draw_circle(pos, radius, _with_alpha(Color("ff7a4f"), 0.1 + alpha * 0.12))
-	draw_arc(pos, radius, 0.0, TAU, 28, _with_alpha(Color("fff1a6"), 0.34 + alpha * 0.54), 3.0, true)
-	draw_line(pos + Vector2(-8.0, -8.0), pos + Vector2(8.0, 8.0), _with_alpha(Color("ff6a6a"), 0.44 + alpha * 0.48), 2.6)
-	draw_line(pos + Vector2(-8.0, 8.0), pos + Vector2(8.0, -8.0), _with_alpha(Color("ff6a6a"), 0.44 + alpha * 0.48), 2.6)
 
 
 func _draw_hud() -> void:
