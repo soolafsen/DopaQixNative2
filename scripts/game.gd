@@ -1389,10 +1389,11 @@ func _player_position() -> Vector2:
 func _board_rect() -> Rect2:
 	var sidebar_width: float = SIDEBAR_WIDTH
 	if state_name == "title":
-		sidebar_width = clampf(size.x - BOARD_RECT.size.x - 54.0, SIDEBAR_WIDTH, 430.0)
+		sidebar_width = clampf(size.x - BOARD_RECT.size.x - 18.0, 430.0, 500.0)
 	var cabinet_width: float = BOARD_RECT.size.x + SIDEBAR_GAP + sidebar_width
-	var left: float = maxf(24.0, floor((size.x - cabinet_width) * 0.5))
-	var top: float = 24.0 if state_name == "title" else clampf(floor(size.y * 0.12), 92.0, 122.0)
+	var min_left: float = 6.0 if state_name == "title" else 24.0
+	var left: float = maxf(min_left, floor((size.x - cabinet_width) * 0.5))
+	var top: float = 12.0 if state_name == "title" else clampf(floor(size.y * 0.12), 92.0, 122.0)
 	return Rect2(Vector2(left, top), BOARD_RECT.size)
 
 
@@ -1763,39 +1764,46 @@ func _options_visible() -> bool:
 
 func _options_panel_rect() -> Rect2:
 	var board := _board_rect()
-	var top: float = maxf(18.0, board.position.y - (18.0 if state_name == "title" else 104.0))
-	var bottom: float = minf(size.y - 12.0, board.end.y + (92.0 if state_name == "title" else 12.0))
+	var top: float = 8.0 if state_name == "title" else maxf(18.0, board.position.y - 104.0)
+	var bottom: float = minf(size.y - 8.0, board.end.y + (28.0 if state_name == "title" else 12.0))
 	var x: float = board.end.x + SIDEBAR_GAP
-	var width: float = clampf(size.x - x - 18.0, SIDEBAR_WIDTH, 430.0) if state_name == "title" else SIDEBAR_WIDTH
+	var width: float = clampf(size.x - x - 6.0, 430.0, 500.0) if state_name == "title" else SIDEBAR_WIDTH
 	return Rect2(Vector2(x, top), Vector2(width, bottom - top))
 
 
 func _options_settings_rect() -> Rect2:
 	var panel := _options_panel_rect()
+	if state_name == "title":
+		return Rect2(panel.position + Vector2(18.0, 98.0), Vector2(panel.size.x - 36.0, 246.0))
 	return Rect2(panel.position + Vector2(18.0, 104.0), Vector2(panel.size.x - 36.0, 300.0))
 
 
 func _options_controls_rect() -> Rect2:
 	var settings := _options_settings_rect()
-	return Rect2(Vector2(settings.position.x, settings.end.y + 12.0), Vector2(settings.size.x, 138.0))
+	var height: float = 110.0 if state_name == "title" else 138.0
+	return Rect2(Vector2(settings.position.x, settings.end.y + 10.0), Vector2(settings.size.x, height))
 
 
 func _options_footer_rect() -> Rect2:
 	var panel := _options_panel_rect()
-	return Rect2(Vector2(panel.position.x + 18.0, panel.end.y - 72.0), Vector2(panel.size.x - 36.0, 52.0))
+	var height: float = 46.0 if state_name == "title" else 52.0
+	return Rect2(Vector2(panel.position.x + 18.0, panel.end.y - height - 12.0), Vector2(panel.size.x - 36.0, height))
 
 
 func _options_pickups_rect() -> Rect2:
 	var controls := _options_controls_rect()
 	var footer := _options_footer_rect()
+	var min_height: float = 120.0 if state_name == "title" else 68.0
 	return Rect2(
 		Vector2(controls.position.x, controls.end.y + 12.0),
-		Vector2(controls.size.x, maxf(68.0, footer.position.y - controls.end.y - 36.0))
+		Vector2(controls.size.x, maxf(min_height, footer.position.y - controls.end.y - 18.0))
 	)
 
 
 func _options_control_rect(index: int) -> Rect2:
 	var settings := _options_settings_rect()
+	if state_name == "title":
+		return Rect2(Vector2(settings.end.x - 154.0, settings.position.y + 12.0 + index * 38.0), Vector2(154.0, 32.0))
 	return Rect2(Vector2(settings.end.x - 154.0, settings.position.y + 18.0 + index * 46.0), Vector2(154.0, 34.0))
 
 
@@ -2071,7 +2079,7 @@ func _draw_cabinet_shell() -> void:
 	var panel := _options_panel_rect()
 	var shell := Rect2()
 	if state_name == "title":
-		shell = Rect2(Vector2(12.0, 12.0), Vector2(size.x - 24.0, maxf(board.end.y + 24.0, panel.end.y + 12.0) - 12.0))
+		shell = Rect2(Vector2(4.0, 4.0), Vector2(size.x - 8.0, maxf(board.end.y + 18.0, panel.end.y + 8.0) - 4.0))
 	else:
 		shell = Rect2(
 			Vector2(board.position.x - 24.0, minf(board.position.y - 18.0, panel.position.y - 14.0)),
@@ -2365,8 +2373,10 @@ func _draw_options_panel() -> void:
 	_draw_panel(footer_rect, Color("08111a", 0.98), _with_alpha(Color("4b5a69"), 0.34))
 	_draw_label(settings.position + Vector2(16.0, 26.0), "SETTINGS", 13, Color("8ea3b4"))
 	var labels := ["Speed", "Magic", "Reveal Pool", "Cheat Mode", "Music", "Volume"]
+	var settings_label_start := 44.0 if state_name == "title" else 52.0
+	var settings_label_step := 38.0 if state_name == "title" else 46.0
 	for index in range(labels.size()):
-		var y := settings.position.y + 52.0 + index * 46.0
+		var y := settings.position.y + settings_label_start + index * settings_label_step
 		_draw_label(Vector2(settings.position.x + 16.0, y), labels[index], 16, Color("eef8ff"))
 	var speed_rect := _options_control_rect(0)
 	var magic_rect := _options_control_rect(1)
