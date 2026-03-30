@@ -72,7 +72,7 @@ const THEME_DATA := [
 		"bg_b": "0d1620",
 		"bg_c": "162532",
 		"rail": "49ff62",
-		"claim_fill": "d9e7ff10",
+		"claim_fill": "ffffff00",
 		"trail_a": "ff5f86",
 		"trail_b": "74c0fc",
 		"enemy_core": "fdfdfd"
@@ -336,8 +336,8 @@ func _reset_run_state() -> void:
 
 func _start_level(level_number: int) -> void:
 	level = level_number
-	_start_level_data(level)
 	state_name = "playing"
+	_start_level_data(level)
 	state_timer = 0.0
 	banner_text = "LEVEL %02d  |  GOAL %d%%" % [level, capture_goal]
 	banner_timer = 1.7
@@ -1576,19 +1576,35 @@ func _build_grain_texture() -> void:
 	grain_texture = ImageTexture.create_from_image(image)
 
 
+func _background_source_region(texture_size: Vector2) -> Rect2:
+	if texture_size.x <= 0.0 or texture_size.y <= 0.0:
+		return Rect2(Vector2.ZERO, texture_size)
+	var board_aspect := BOARD_RECT.size.x / BOARD_RECT.size.y
+	var texture_aspect := texture_size.x / texture_size.y
+	if texture_aspect > board_aspect:
+		var crop_width := texture_size.y * board_aspect
+		return Rect2(Vector2((texture_size.x - crop_width) * 0.5, 0.0), Vector2(crop_width, texture_size.y))
+	var crop_height := texture_size.x / board_aspect
+	return Rect2(Vector2(0.0, (texture_size.y - crop_height) * 0.5), Vector2(texture_size.x, crop_height))
+
+
 func _draw_claimed_reveal_tile(tile_rect: Rect2, col: int, row: int) -> void:
 	if current_background_gray == null:
 		return
 	var texture_size := current_background_gray.get_size()
 	if texture_size.x <= 0.0 or texture_size.y <= 0.0:
 		return
+	var source := _background_source_region(texture_size)
 	var region := Rect2(
-		Vector2(float(col) / float(COLS) * texture_size.x, float(row) / float(ROWS) * texture_size.y),
-		Vector2(texture_size.x / float(COLS), texture_size.y / float(ROWS))
+		Vector2(
+			source.position.x + float(col) / float(COLS) * source.size.x,
+			source.position.y + float(row) / float(ROWS) * source.size.y
+		),
+		Vector2(source.size.x / float(COLS), source.size.y / float(ROWS))
 	)
-	draw_texture_rect_region(current_background_gray, tile_rect, region, Color(1, 1, 1, 0.97))
+	draw_texture_rect_region(current_background_gray, tile_rect, region, Color(1, 1, 1, 1.0))
 	if grain_texture != null:
-		draw_texture_rect(grain_texture, tile_rect, true, Color(1, 1, 1, 0.08))
+		draw_texture_rect(grain_texture, tile_rect, true, Color(1, 1, 1, 0.035))
 
 
 func _build_audio() -> void:
@@ -2031,14 +2047,14 @@ func _draw_board() -> void:
 	var board_rect := _shift_rect(board, camera_offset * 0.12)
 	if reveal_complete:
 		if current_background != null:
-			draw_texture_rect(current_background, board_rect, false, Color(1, 1, 1, 1.0))
-		draw_rect(board_rect, Color(1, 1, 1, 0.025), true)
+			draw_texture_rect_region(current_background, board_rect, _background_source_region(current_background.get_size()), Color(1, 1, 1, 1.0))
+		draw_rect(board_rect, Color(0, 0, 0, 0.015), true)
 	elif grain_texture != null:
 		draw_texture_rect(grain_texture, board_rect, true, Color(1, 1, 1, 0.05 if state_name == "title" else 0.11))
 
 	for scan in range(18):
 		var scan_y := board.position.y + 12.0 + scan * ((board.size.y - 24.0) / 17.0)
-		draw_rect(Rect2(Vector2(board.position.x + 8.0, scan_y), Vector2(board.size.x - 16.0, 2.0)), _with_alpha(Color.WHITE, 0.01 if reveal_complete else 0.012), true)
+		draw_rect(Rect2(Vector2(board.position.x + 8.0, scan_y), Vector2(board.size.x - 16.0, 2.0)), _with_alpha(Color.WHITE, 0.003 if reveal_complete else 0.012), true)
 
 	if not reveal_complete:
 		for row in range(ROWS):
@@ -2047,17 +2063,17 @@ func _draw_board() -> void:
 				match grid[row][col]:
 					TILE_EMPTY:
 						var empty_color := Color("000000")
-						empty_color.a = 0.98
+						empty_color.a = 1.0
 						draw_rect(rect, empty_color, true)
 						if (col + row) % 2 == 0:
-							draw_rect(rect.grow(-3.0), Color(1, 1, 1, 0.008), true)
+							draw_rect(rect.grow(-3.0), Color(1, 1, 1, 0.004), true)
 					TILE_SAFE:
 						_draw_claimed_reveal_tile(rect, col, row)
 						var claim_color := _theme_color("claim_fill")
-						claim_color.a = 0.012
+						claim_color.a = 0.0
 						draw_rect(rect, claim_color, true)
-						draw_rect(rect.grow(-1.0), _with_alpha(_theme_color("rail"), 0.14), false, 1.0)
-						draw_rect(Rect2(rect.position + Vector2(2.0, 2.0), Vector2(rect.size.x - 4.0, 2.0)), _with_alpha(Color.WHITE, 0.04), true)
+						draw_rect(rect.grow(-1.0), _with_alpha(_theme_color("rail"), 0.1), false, 1.0)
+						draw_rect(Rect2(rect.position + Vector2(2.0, 2.0), Vector2(rect.size.x - 4.0, 2.0)), _with_alpha(Color.WHITE, 0.02), true)
 					TILE_TRAIL:
 						var pulse := _rainbow_color(col + row)
 						pulse.a = 0.94
