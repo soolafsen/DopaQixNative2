@@ -9,13 +9,13 @@ const TILE_EMPTY := 0
 const TILE_SAFE := 1
 const TILE_TRAIL := 2
 
-const CELL := 11
+const CELL := 15
 const COLS := 80
 const ROWS := 60
-const BOARD_RECT := Rect2(Vector2(36.0, 122.0), Vector2(COLS * CELL, ROWS * CELL))
+const BOARD_RECT := Rect2(Vector2.ZERO, Vector2(COLS * CELL, ROWS * CELL))
 const CARDINALS := [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]
-const SIDEBAR_GAP := 4.0
-const SIDEBAR_WIDTH := 360.0
+const SIDEBAR_GAP := 10.0
+const SIDEBAR_WIDTH := 620.0
 const MUSIC_ASSET_PATH := "res://assets/audio/zenostar_loop.ogg"
 const SLICE_ASSET_PATH := "res://assets/audio/cut_tick.ogg"
 const TITLE_LETTERS := [
@@ -38,10 +38,10 @@ const TRAIL_RAINBOW := [
 
 const MOVE_INTERVAL := 0.07
 const SPARK_SPEED := 9.0
-const ENEMY_SPEED_MIN := 90.0
-const ENEMY_SPEED_MAX := 150.0
-const ENEMY_ARM_MIN := 22.0
-const ENEMY_ARM_MAX := 52.0
+const ENEMY_SPEED_MIN := 124.0
+const ENEMY_SPEED_MAX := 205.0
+const ENEMY_ARM_MIN := 30.0
+const ENEMY_ARM_MAX := 72.0
 const ENEMY_HISTORY_LENGTH := 7
 const SPARK_HISTORY_LENGTH := 6
 const ENEMY_RESIDUE_DROP_INTERVAL := 0.055
@@ -1387,14 +1387,9 @@ func _player_position() -> Vector2:
 
 
 func _board_rect() -> Rect2:
-	var sidebar_width: float = SIDEBAR_WIDTH
 	if state_name == "title":
-		sidebar_width = clampf(size.x - BOARD_RECT.size.x - 18.0, 430.0, 500.0)
-	var cabinet_width: float = BOARD_RECT.size.x + SIDEBAR_GAP + sidebar_width
-	var min_left: float = 6.0 if state_name == "title" else 24.0
-	var left: float = maxf(min_left, floor((size.x - cabinet_width) * 0.5))
-	var top: float = 12.0 if state_name == "title" else clampf(floor(size.y * 0.12), 92.0, 122.0)
-	return Rect2(Vector2(left, top), BOARD_RECT.size)
+		return Rect2(Vector2(44.0, 92.0), BOARD_RECT.size)
+	return Rect2(Vector2(52.0, 148.0), BOARD_RECT.size)
 
 
 func _cell_center(col: int, row: int) -> Vector2:
@@ -1764,47 +1759,38 @@ func _options_visible() -> bool:
 
 func _options_panel_rect() -> Rect2:
 	var board := _board_rect()
-	var top: float = 8.0 if state_name == "title" else maxf(18.0, board.position.y - 104.0)
-	var bottom: float = minf(size.y - 8.0, board.end.y + (28.0 if state_name == "title" else 12.0))
+	var top: float = 20.0 if state_name == "title" else 24.0
 	var x: float = board.end.x + SIDEBAR_GAP
-	var width: float = clampf(size.x - x - 6.0, 430.0, 500.0) if state_name == "title" else SIDEBAR_WIDTH
-	return Rect2(Vector2(x, top), Vector2(width, bottom - top))
+	return Rect2(Vector2(x, top), Vector2(SIDEBAR_WIDTH, size.y - top - 24.0))
 
 
 func _options_settings_rect() -> Rect2:
 	var panel := _options_panel_rect()
-	if state_name == "title":
-		return Rect2(panel.position + Vector2(18.0, 98.0), Vector2(panel.size.x - 36.0, 246.0))
-	return Rect2(panel.position + Vector2(18.0, 104.0), Vector2(panel.size.x - 36.0, 300.0))
+	return Rect2(panel.position + Vector2(20.0, 118.0), Vector2(panel.size.x - 40.0, 360.0))
 
 
 func _options_controls_rect() -> Rect2:
 	var settings := _options_settings_rect()
-	var height: float = 110.0 if state_name == "title" else 138.0
-	return Rect2(Vector2(settings.position.x, settings.end.y + 10.0), Vector2(settings.size.x, height))
+	return Rect2(Vector2(settings.position.x, settings.end.y + 16.0), Vector2(settings.size.x, 182.0))
 
 
 func _options_footer_rect() -> Rect2:
 	var panel := _options_panel_rect()
-	var height: float = 46.0 if state_name == "title" else 52.0
-	return Rect2(Vector2(panel.position.x + 18.0, panel.end.y - height - 12.0), Vector2(panel.size.x - 36.0, height))
+	return Rect2(Vector2(panel.position.x + 20.0, panel.end.y - 84.0), Vector2(panel.size.x - 40.0, 58.0))
 
 
 func _options_pickups_rect() -> Rect2:
 	var controls := _options_controls_rect()
 	var footer := _options_footer_rect()
-	var min_height: float = 120.0 if state_name == "title" else 68.0
 	return Rect2(
 		Vector2(controls.position.x, controls.end.y + 12.0),
-		Vector2(controls.size.x, maxf(min_height, footer.position.y - controls.end.y - 18.0))
+		Vector2(controls.size.x, maxf(176.0, footer.position.y - controls.end.y - 16.0))
 	)
 
 
 func _options_control_rect(index: int) -> Rect2:
 	var settings := _options_settings_rect()
-	if state_name == "title":
-		return Rect2(Vector2(settings.end.x - 154.0, settings.position.y + 12.0 + index * 38.0), Vector2(154.0, 32.0))
-	return Rect2(Vector2(settings.end.x - 154.0, settings.position.y + 18.0 + index * 46.0), Vector2(154.0, 34.0))
+	return Rect2(Vector2(settings.end.x - 194.0, settings.position.y + 18.0 + index * 56.0), Vector2(176.0, 38.0))
 
 
 func _options_exit_rect() -> Rect2:
@@ -2077,16 +2063,12 @@ func _draw_board() -> void:
 func _draw_cabinet_shell() -> void:
 	var board := _board_rect()
 	var panel := _options_panel_rect()
-	var shell := Rect2()
-	if state_name == "title":
-		shell = Rect2(Vector2(4.0, 4.0), Vector2(size.x - 8.0, maxf(board.end.y + 18.0, panel.end.y + 8.0) - 4.0))
-	else:
-		shell = Rect2(
-			Vector2(board.position.x - 24.0, minf(board.position.y - 18.0, panel.position.y - 14.0)),
-			Vector2(panel.end.x - board.position.x + 48.0, maxf(board.end.y + 18.0, panel.end.y + 12.0) - minf(board.position.y - 18.0, panel.position.y - 14.0))
-		)
+	var shell := Rect2(
+		Vector2(board.position.x - 24.0, minf(board.position.y - 20.0, panel.position.y - 14.0)),
+		Vector2(panel.end.x - board.position.x + 48.0, maxf(board.end.y + 20.0, panel.end.y + 14.0) - minf(board.position.y - 20.0, panel.position.y - 14.0))
+	)
 	draw_rect(shell, _with_alpha(Color("09111a"), 0.9), true)
-	draw_rect(Rect2(Vector2(board.end.x - 10.0, shell.position.y + 12.0), Vector2(panel.position.x - board.end.x + 20.0, shell.size.y - 24.0)), _with_alpha(Color("0c141d"), 0.98), true)
+	draw_rect(Rect2(Vector2(board.end.x - 8.0, shell.position.y + 10.0), Vector2(panel.position.x - board.end.x + 16.0, shell.size.y - 20.0)), _with_alpha(Color("0c141d"), 0.98), true)
 	draw_rect(shell, _with_alpha(Color("233342"), 0.52), false, 3.0)
 	draw_rect(shell.grow(-10.0), _with_alpha(Color("0f1822"), 0.42), false, 1.0)
 
@@ -2287,11 +2269,11 @@ func _draw_floaters() -> void:
 
 func _draw_hud() -> void:
 	var board := _board_rect()
-	var header_x := board.position.x - 6.0
-	var card_y := maxf(18.0, board.position.y - 78.0)
-	var card_height := 56.0
-	var gap := 8.0
-	var card_width := 115.0
+	var header_x := board.position.x
+	var card_y := 28.0
+	var card_height := 72.0
+	var gap := 10.0
+	var card_width: float = floor((board.size.x - gap * 6.0) / 7.0)
 	var cards := [
 		{"label": "Score", "value": "%06d" % score, "accent": Color("ffd86a"), "size": 22},
 		{"label": "High", "value": "%06d" % high_score, "accent": Color("f5fbff"), "size": 22},
@@ -2306,11 +2288,11 @@ func _draw_hud() -> void:
 		var rect := Rect2(Vector2(header_x + index * (card_width + gap), card_y), Vector2(card_width, card_height))
 		_draw_metric_card(rect, card["label"], card["value"], card["accent"], card["size"])
 
-	var power_rect := Rect2(Vector2(board.position.x - 6.0, board.position.y - 14.0), Vector2(board.size.x + 28.0, 10.0))
+	var power_rect := Rect2(Vector2(board.position.x, 114.0), Vector2(board.size.x, 12.0))
 	draw_rect(power_rect, Color("10151f", 0.95), true)
 	var remaining: float = clamp(1.0 - elapsed_seconds / LEVEL_TIME_LIMIT, 0.0, 1.0)
 	var fill_color := Color("43ff60").lerp(Color("ff9d59"), 1.0 - remaining)
-	draw_rect(Rect2(power_rect.position + Vector2(4.0, 2.0), Vector2((power_rect.size.x - 8.0) * remaining, 6.0)), fill_color, true)
+	draw_rect(Rect2(power_rect.position + Vector2(4.0, 3.0), Vector2((power_rect.size.x - 8.0) * remaining, 6.0)), fill_color, true)
 	draw_rect(power_rect, _with_alpha(Color("ecffef"), 0.1), false, 1.0)
 
 	var effects := []
@@ -2365,19 +2347,19 @@ func _draw_options_panel() -> void:
 	var pickups_rect := _options_pickups_rect()
 	var footer_rect := _options_footer_rect()
 	_draw_panel(panel, Color("0a1017", 0.97), _with_alpha(Color("31414f"), 0.52))
-	_draw_candy_title(panel.position + Vector2(18.0, 46.0))
-	_draw_label(panel.position + Vector2(18.0, 92.0), "BETA CONTROLS", 13, Color("a0adc3"))
+	_draw_candy_title(panel.position + Vector2(22.0, 54.0))
+	_draw_label(panel.position + Vector2(22.0, 112.0), "BETA CONTROLS", 13, Color("a0adc3"))
 	_draw_panel(settings, Color("08111a", 0.98), _with_alpha(Color("2f4a5d"), 0.42))
 	_draw_panel(controls, Color("08111a", 0.98), _with_alpha(Color("544031"), 0.34))
 	_draw_panel(pickups_rect, Color("08111a", 0.98), _with_alpha(Color("36505f"), 0.34))
 	_draw_panel(footer_rect, Color("08111a", 0.98), _with_alpha(Color("4b5a69"), 0.34))
 	_draw_label(settings.position + Vector2(16.0, 26.0), "SETTINGS", 13, Color("8ea3b4"))
 	var labels := ["Speed", "Magic", "Reveal Pool", "Cheat Mode", "Music", "Volume"]
-	var settings_label_start := 44.0 if state_name == "title" else 52.0
-	var settings_label_step := 38.0 if state_name == "title" else 46.0
+	var settings_label_start := 50.0
+	var settings_label_step := 56.0
 	for index in range(labels.size()):
 		var y := settings.position.y + settings_label_start + index * settings_label_step
-		_draw_label(Vector2(settings.position.x + 16.0, y), labels[index], 16, Color("eef8ff"))
+		_draw_label(Vector2(settings.position.x + 18.0, y), labels[index], 18, Color("eef8ff"))
 	var speed_rect := _options_control_rect(0)
 	var magic_rect := _options_control_rect(1)
 	var pool_rect := _options_control_rect(2)
@@ -2399,21 +2381,21 @@ func _draw_options_panel() -> void:
 		"Q: Quit"
 	]
 	for index in range(control_lines.size()):
-		_draw_label(Vector2(controls.position.x + 16.0, controls.position.y + 50.0 + index * 18.0), control_lines[index], 14, Color("eef8ff"))
+		_draw_label(Vector2(controls.position.x + 18.0, controls.position.y + 54.0 + index * 28.0), control_lines[index], 18, Color("eef8ff"))
 	_draw_label(pickups_rect.position + Vector2(16.0, 26.0), "PICKUPS", 13, Color("8ea3b4"))
-	var legend_y := pickups_rect.position.y + 54.0
+	var legend_y := pickups_rect.position.y + 62.0
 	for legend in [
 		{"text": "Bomb", "desc": "Slow 10s", "fill": Color("5b2f2b")},
 		{"text": "Heart", "desc": "+1 life", "fill": Color("5b2943")},
 		{"text": "Muffin", "desc": "Speed boost", "fill": Color("58523a")},
 		{"text": "Shield", "desc": "Immune 10s", "fill": Color("223d4f")}
 	]:
-		var badge := Rect2(Vector2(pickups_rect.position.x + 16.0, legend_y - 16.0), Vector2(96.0, 24.0))
+		var badge := Rect2(Vector2(pickups_rect.position.x + 18.0, legend_y - 18.0), Vector2(122.0, 28.0))
 		_draw_panel(badge, legend["fill"], _with_alpha(Color.WHITE, 0.1))
-		_draw_centered_label(Vector2(badge.get_center().x, badge.position.y + 17.0), legend["text"], 13, Color("fff6ea"))
-		_draw_label(Vector2(pickups_rect.position.x + 128.0, legend_y), legend["desc"], 14, Color("eef8ff"))
-		legend_y += 22.0
-	_draw_action_pill(footer_rect.grow_individual(-10.0, -8.0, -10.0, -8.0), "Exit Game")
+		_draw_centered_label(Vector2(badge.get_center().x, badge.position.y + 20.0), legend["text"], 15, Color("fff6ea"))
+		_draw_label(Vector2(pickups_rect.position.x + 156.0, legend_y), legend["desc"], 18, Color("eef8ff"))
+		legend_y += 34.0
+	_draw_action_pill(footer_rect.grow_individual(-14.0, -10.0, -14.0, -10.0), "Exit Game")
 
 
 func _draw_label(position: Vector2, text: String, font_size: int, color: Color) -> void:
