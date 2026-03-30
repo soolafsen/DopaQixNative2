@@ -14,7 +14,7 @@ const COLS := 80
 const ROWS := 60
 const BOARD_RECT := Rect2(Vector2(36.0, 122.0), Vector2(COLS * CELL, ROWS * CELL))
 const CARDINALS := [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]
-const SIDEBAR_GAP := 14.0
+const SIDEBAR_GAP := 4.0
 const SIDEBAR_WIDTH := 360.0
 const MUSIC_ASSET_PATH := "res://assets/audio/zenostar_loop.ogg"
 const SLICE_ASSET_PATH := "res://assets/audio/cut_tick.ogg"
@@ -1389,7 +1389,7 @@ func _player_position() -> Vector2:
 func _board_rect() -> Rect2:
 	var cabinet_width: float = BOARD_RECT.size.x + SIDEBAR_GAP + SIDEBAR_WIDTH
 	var left: float = maxf(24.0, floor((size.x - cabinet_width) * 0.5))
-	var top: float = clampf(floor(size.y * 0.12), 92.0, 122.0)
+	var top: float = 34.0 if state_name == "title" else clampf(floor(size.y * 0.12), 92.0, 122.0)
 	return Rect2(Vector2(left, top), BOARD_RECT.size)
 
 
@@ -1760,8 +1760,8 @@ func _options_visible() -> bool:
 
 func _options_panel_rect() -> Rect2:
 	var board := _board_rect()
-	var top: float = maxf(18.0, board.position.y - 104.0)
-	var bottom: float = minf(size.y - 18.0, board.end.y + 22.0)
+	var top: float = maxf(18.0, board.position.y - (18.0 if state_name == "title" else 104.0))
+	var bottom: float = minf(size.y - 12.0, board.end.y + 12.0)
 	var x: float = board.end.x + SIDEBAR_GAP
 	var width: float = SIDEBAR_WIDTH
 	return Rect2(Vector2(x, top), Vector2(width, bottom - top))
@@ -1937,6 +1937,8 @@ func _on_exit_button_pressed() -> void:
 
 func _draw() -> void:
 	_draw_backdrop()
+	if _options_visible():
+		_draw_cabinet_shell()
 	_draw_board()
 	if state_name != "level_clear":
 		_draw_enemy_residue()
@@ -2059,6 +2061,19 @@ func _draw_board() -> void:
 	_draw_candy_frame(board)
 	if state_name == "title":
 		draw_rect(board, Color(0, 0, 0, 0.16), true)
+
+
+func _draw_cabinet_shell() -> void:
+	var board := _board_rect()
+	var panel := _options_panel_rect()
+	var shell := Rect2(
+		Vector2(board.position.x - 24.0, minf(board.position.y - 18.0, panel.position.y - 14.0)),
+		Vector2(panel.end.x - board.position.x + 48.0, maxf(board.end.y + 18.0, panel.end.y + 12.0) - minf(board.position.y - 18.0, panel.position.y - 14.0))
+	)
+	draw_rect(shell, _with_alpha(Color("09111a"), 0.9), true)
+	draw_rect(Rect2(Vector2(board.end.x - 10.0, shell.position.y + 12.0), Vector2(panel.position.x - board.end.x + 20.0, shell.size.y - 24.0)), _with_alpha(Color("0c141d"), 0.98), true)
+	draw_rect(shell, _with_alpha(Color("233342"), 0.52), false, 3.0)
+	draw_rect(shell.grow(-10.0), _with_alpha(Color("0f1822"), 0.42), false, 1.0)
 
 
 func _draw_player() -> void:
