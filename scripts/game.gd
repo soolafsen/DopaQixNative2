@@ -16,6 +16,7 @@ const BOARD_RECT := Rect2(Vector2.ZERO, Vector2(COLS * CELL, ROWS * CELL))
 const CARDINALS := [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]
 const SIDEBAR_GAP := 10.0
 const SIDEBAR_WIDTH := 620.0
+const BACKGROUND_MANIFEST_PATH := "res://backgrounds/manifest.json"
 const MUSIC_ASSET_PATH := "res://assets/audio/zenostar_loop.ogg"
 const SLICE_ASSET_PATH := "res://assets/audio/cut_tick.ogg"
 const TITLE_LETTERS := [
@@ -1468,6 +1469,15 @@ func _load_backgrounds() -> void:
 	background_paths.clear()
 	for key in background_pools.keys():
 		background_pools[key].clear()
+	if FileAccess.file_exists(BACKGROUND_MANIFEST_PATH):
+		var manifest_text := FileAccess.get_file_as_string(BACKGROUND_MANIFEST_PATH)
+		var parsed = JSON.parse_string(manifest_text)
+		if parsed is Array:
+			for entry in parsed:
+				if entry is String:
+					_register_background_path("res://backgrounds/%s" % entry)
+	if not background_paths.is_empty():
+		return
 	var dir := DirAccess.open("res://backgrounds")
 	if dir == null:
 		return
@@ -1480,17 +1490,22 @@ func _load_backgrounds() -> void:
 			continue
 		var extension := file.get_extension().to_lower()
 		if extension in ["jpg", "jpeg", "png", "webp"]:
-			var path := "res://backgrounds/%s" % file
-			background_paths.append(path)
-			background_pools["random"].append(path)
-			var lower := file.to_lower()
-			if lower.begins_with("pup"):
-				background_pools["aww"].append(path)
-			elif lower.begins_with("funny"):
-				background_pools["funny"].append(path)
-			elif lower.begins_with("pinup"):
-				background_pools["pinup"].append(path)
+			_register_background_path("res://backgrounds/%s" % file)
 	dir.list_dir_end()
+
+
+func _register_background_path(path: String) -> void:
+	if path == "" or background_paths.has(path):
+		return
+	background_paths.append(path)
+	background_pools["random"].append(path)
+	var lower := path.get_file().to_lower()
+	if lower.begins_with("pup"):
+		background_pools["aww"].append(path)
+	elif lower.begins_with("funny"):
+		background_pools["funny"].append(path)
+	elif lower.begins_with("pinup"):
+		background_pools["pinup"].append(path)
 
 
 func _pick_background_texture() -> Texture2D:
