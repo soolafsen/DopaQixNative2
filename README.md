@@ -1,13 +1,13 @@
 # DopaQixNative2
 
-Native Godot 4 Windows port of the DopaQiX web game on `main`, rebuilt to stay close to the original gameplay loop, board framing, reveal mechanic, pickups, and synth-heavy arcade feel while shipping as a normal Windows `.exe`.
+Native Godot 4 Windows port of the DopaQiX web game on `main`, rebuilt to stay close to the original gameplay loop, board framing, reveal mechanic, pickups, and synth-heavy arcade feel while shipping as a simple Windows zip bundle.
 
 ## Play Now
 
 1. Go to [Releases](https://github.com/soolafsen/DopaQixNative2/releases/latest).
 2. Download `DopaQixNative2-win64.zip`.
 3. Unzip it.
-4. Double-click `DopaQixNative2.exe`.
+4. Open the extracted folder and double-click `DopaQixNative2.exe`.
 
 No Godot install is required for players.
 
