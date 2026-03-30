@@ -1759,7 +1759,7 @@ func _options_control_rect(index: int) -> Rect2:
 
 func _options_exit_rect() -> Rect2:
 	var panel := _options_panel_rect()
-	return Rect2(Vector2(panel.position.x + 18.0, panel.end.y - 44.0), Vector2(panel.size.x - 36.0, 30.0))
+	return Rect2(Vector2(panel.position.x + 18.0, panel.end.y - 36.0), Vector2(panel.size.x - 36.0, 20.0))
 
 
 func _control_step_rect(base: Rect2, side: String) -> Rect2:
@@ -2315,8 +2315,8 @@ func _draw_options_panel() -> void:
 	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 554.0), "Shift: Fast risky carve", 15, Color("eef8ff"))
 	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 578.0), "P / Esc: Pause", 15, Color("eef8ff"))
 	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 602.0), "Q: Quit", 15, Color("eef8ff"))
-	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 636.0), "PICKUPS", 13, Color("7f8baa"))
-	var legend_y := panel.position.y + 666.0
+	_draw_label(Vector2(panel.position.x + 18.0, panel.position.y + 624.0), "PICKUPS", 13, Color("7f8baa"))
+	var legend_y := panel.position.y + 648.0
 	for legend in [
 		{"text": "Bomb", "desc": "Slow 10s", "fill": Color("5b2f2b")},
 		{"text": "Heart", "desc": "+1 life", "fill": Color("5b2943")},
@@ -2326,8 +2326,8 @@ func _draw_options_panel() -> void:
 		var badge := Rect2(Vector2(panel.position.x + 18.0, legend_y - 16.0), Vector2(90.0, 24.0))
 		_draw_panel(badge, legend["fill"], _with_alpha(Color.WHITE, 0.1))
 		_draw_centered_label(Vector2(badge.get_center().x, badge.position.y + 17.0), legend["text"], 13, Color("fff6ea"))
-		_draw_label(Vector2(panel.position.x + 126.0, legend_y), legend["desc"], 15, Color("eef8ff"))
-		legend_y += 27.0
+		_draw_label(Vector2(panel.position.x + 126.0, legend_y), legend["desc"], 14, Color("eef8ff"))
+		legend_y += 24.0
 	_draw_toggle_pill(_options_exit_rect(), "Exit Game", false)
 
 
