@@ -1,6 +1,6 @@
 # DopaQixNative2
 
-Native Godot 4 Windows port of the DopaQiX web game on `main`, rebuilt to stay close to the original gameplay loop, board framing, reveal mechanic, pickups, and synth-heavy arcade feel while shipping as a simple Windows zip bundle.
+Native Godot 4 Windows build of DopaQiX, focused on the same gameplay loop, board framing, reveal mechanic, pickups, and synth-heavy arcade feel while shipping as a simple Windows zip bundle.
 
 <p align="center">
   <img src="docs/dopaplay1.png" alt="DopaQixNative2 gameplay illustration" width="960">

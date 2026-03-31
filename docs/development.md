@@ -1,6 +1,6 @@
 # Development
 
-This repo ships a native Godot build of the DopaQiX web game.
+This repo ships a native Godot build of DopaQiX.
 
 ## Prerequisites
 
@@ -42,7 +42,7 @@ That script:
 
 ## Source Of Truth For Gameplay Rules
 
-Use `origin/main:script.js` as the authoritative reference for:
+Use `scripts/game.gd` as the authoritative reference for:
 
 - player rail-only movement and trail start rules
 - spark routing on rail or trail paths
@@ -53,7 +53,7 @@ Use `origin/main:script.js` as the authoritative reference for:
 Useful command:
 
 ```powershell
-git show origin/main:script.js
+rg -n "LEVEL_TIME_LIMIT|GOAL|func _process|func _draw|func start_" scripts/game.gd
 ```
 
 ## Release Guardrail
